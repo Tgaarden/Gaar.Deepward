@@ -1,0 +1,8 @@
+<Bindings>
+    <Binding name="DEEPWARDTIERS_TOGGLE" header="DEEPWARD">
+        DeepwardTiers_Toggle()
+    </Binding>
+    <Binding name="DEEPWARDTIERS_MOUNT" header="DEEPWARD">
+        DeepwardTiers_Mount()
+    </Binding>
+</Bindings>

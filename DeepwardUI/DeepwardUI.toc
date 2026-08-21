@@ -1,0 +1,16 @@
+## Interface: 30300
+## Title: Deepward UI
+## Notes: Hides unused default windows, plus a custom Spell Book + native-spellbook action-bar markers.
+## Author: Gaar
+## Version: 1.1
+## SavedVariables:
+
+DeepwardUI.lua
+NativeSpellBook.lua
+SpellBook.lua
+CrossFactionInvite.lua
+SellJunk.lua
+QuestGuard.lua
+AutoBind.lua
+Mount.lua
+Bindings.xml

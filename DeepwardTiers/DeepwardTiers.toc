@@ -1,0 +1,8 @@
+## Interface: 30300
+## Title: Deepward Tiers
+## Notes: Progression panel (tier / gear / wipe budget) styled like the achievement window.
+## Version: 0.1
+## SavedVariables: DeepwardTiersDB
+
+DeepwardTiers.lua
+Bindings.xml

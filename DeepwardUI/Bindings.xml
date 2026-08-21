@@ -1,0 +1,8 @@
+<Bindings>
+    <Binding name="DEEPWARDUI_SPELLBOOK" header="DEEPWARD">
+        DeepwardSpellBook_Toggle()
+    </Binding>
+    <Binding name="DEEPWARDUI_MOUNT" header="DEEPWARD">
+        DeepwardMount()
+    </Binding>
+</Bindings>
