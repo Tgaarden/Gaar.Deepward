@@ -598,7 +598,8 @@ local function CreateUI()
     frame.bgParch = frame:CreateTexture(nil, "BACKGROUND", nil, -8)
     frame.bgParch:SetPoint("TOPLEFT", 6, -6)
     frame.bgParch:SetPoint("BOTTOMRIGHT", -6, 6)
-    frame.bgParch:SetTexture("Interface\\QuestFrame\\QuestBG")
+    frame.bgParch:SetTexture("Interface\\AchievementFrame\\UI-Achievement-Parchment-Horizontal")   -- achievements look
+    frame.bgParch:SetTexCoord(0, 1, 0, 1)
 
     local title = frame:CreateFontString(nil, "ARTWORK", "GameFontNormalHuge")
     title:SetPoint("TOP", 0, -20)
@@ -622,6 +623,13 @@ local function CreateUI()
     frame.badgeLabel:SetPoint("TOP", frame.badgeIcon, "BOTTOM", 0, -1)
     frame.badgeLabel:SetText("slain")
 
+    -- Gold divider under the header (achievements-frame banner separation).
+    local hdiv = frame:CreateTexture(nil, "ARTWORK")
+    hdiv:SetHeight(2)
+    hdiv:SetPoint("TOPLEFT", frame, "TOPLEFT", 20, -92)
+    hdiv:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -20, -92)
+    hdiv:SetTexture(0.72, 0.56, 0.22, 0.85)
+
     -- Left: tier ("category") list. It has no art, so it gets the quest-log parchment as its
     -- background (+ a border) so the whole column reads as a solid beige field. The rows live in a
     -- scroll frame so a long tier list (up to 29) scrolls instead of overflowing.
@@ -636,7 +644,8 @@ local function CreateUI()
     left.parch = left:CreateTexture(nil, "BACKGROUND", nil, -7)
     left.parch:SetPoint("TOPLEFT", 5, -5)
     left.parch:SetPoint("BOTTOMRIGHT", -5, 5)
-    left.parch:SetTexture("Interface\\QuestFrame\\QuestBG")
+    left.parch:SetTexture("Interface\\AchievementFrame\\UI-Achievement-Parchment-Horizontal")
+    left.parch:SetTexCoord(0, 0.5, 0, 1)   -- left slice of the parchment for the narrow column
 
     local tierScroll = CreateFrame("ScrollFrame", "DeepwardTiersTierScroll", left, "UIPanelScrollFrameTemplate")
     tierScroll:SetPoint("TOPLEFT", 10, -10)
