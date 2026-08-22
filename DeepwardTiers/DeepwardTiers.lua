@@ -86,6 +86,23 @@ local TIERS = {
         },
     },
     -- Tiers 4–29 (Ascension) are appended as they're specified. Locked until reached.
+    {
+        id = 66, name = "Molten Core", level = 60, wipeBudget = 3,
+        gear = "Level 60 raid capstone (proof-of-concept)",
+        dungeons = {
+            {
+                name = "Molten Core", cleared = false, map = 409,
+                art = "Interface\\Glues\\LoadingScreens\\LoadScreenMoltenCore",
+                loc = "Blackrock Depths — the Molten Core", range = "60 (5-man capstone)",
+                desc = "The firelord Ragnaros' domain deep beneath Blackrock Mountain — a 40-man raid, run here as a level-60 5-man capstone (bosses NOT down-tuned yet — brutal).",
+                bosses = {
+                    {n="Lucifron",e=12118}, {n="Magmadar",e=11982}, {n="Gehennas",e=12259}, {n="Garr",e=12057},
+                    {n="Baron Geddon",e=12056}, {n="Shazzrah",e=12264}, {n="Sulfuron Harbinger",e=12098},
+                    {n="Golemagg the Incinerator",e=11988}, {n="Majordomo Executus",e=12018}, {n="Ragnaros",e=11502},
+                },
+            },
+        },
+    },
 }
 
 -- Fire a "." command in chat. The player-accessible ".enter" command (custom RBAC perm,
