@@ -569,6 +569,70 @@ local function BuildTierList(parent)
     parent:SetHeight(#TIERS * TIER_BTN_H + 8)
 end
 
+-- Custom role-check popup (idea #6, safe variant). The leader fires .dwrolecheck -> the server relays an
+-- "RC=" message to every member -> this pops up a Tank/DPS/Healer picker. Accept sends .dwrole, which
+-- updates the live roster. Not the native LFG popup -> no LFG state-machine risk.
+local roleCheckFrame
+local function ShowRoleCheckPopup(leaderName)
+    EnsureDB()
+    if not roleCheckFrame then
+        local f = CreateFrame("Frame", "DeepwardRoleCheckPopup", UIParent)
+        f:SetSize(290, 156)
+        f:SetPoint("CENTER", 0, 140)
+        f:SetFrameStrata("DIALOG")
+        f:SetBackdrop({
+            bgFile   = "Interface\\DialogFrame\\UI-DialogBox-Background",
+            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+            tile = true, tileSize = 32, edgeSize = 32,
+            insets = { left = 11, right = 12, top = 12, bottom = 11 },
+        })
+        f:EnableMouse(true)
+        table.insert(UISpecialFrames, "DeepwardRoleCheckPopup")   -- ESC closes
+        f.title = f:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+        f.title:SetPoint("TOP", 0, -16)
+        f.sel = nil
+        f.roleBtns = {}
+        local roles = { "Tank", "DPS", "Healer" }
+        for i, r in ipairs(roles) do
+            local rb = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+            rb:SetSize(80, 28)
+            rb:SetPoint("TOP", f, "TOP", (i - 2) * 86, -48)
+            rb:SetText(r)
+            rb.role = string.lower(r)
+            rb:SetScript("OnClick", function()
+                f.sel = rb.role
+                for _, b in ipairs(f.roleBtns) do
+                    if b == rb then b:LockHighlight() else b:UnlockHighlight() end
+                end
+            end)
+            f.roleBtns[i] = rb
+        end
+        local accept = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+        accept:SetSize(116, 26)
+        accept:SetPoint("BOTTOM", f, "BOTTOM", -62, 16)
+        accept:SetText("Accept")
+        accept:SetScript("OnClick", function()
+            local role = f.sel or DeepwardTiersDB.role or "dps"
+            DeepwardTiersDB.role = role
+            SendCmd(".dwrole " .. role)
+            if UpdateRoleButtons then UpdateRoleButtons() end
+            f:Hide()
+        end)
+        local cancel = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+        cancel:SetSize(92, 26)
+        cancel:SetPoint("BOTTOM", f, "BOTTOM", 62, 16)
+        cancel:SetText("Cancel")
+        cancel:SetScript("OnClick", function() f:Hide() end)
+        roleCheckFrame = f
+    end
+    roleCheckFrame.sel = DeepwardTiersDB.role or "dps"
+    for _, b in ipairs(roleCheckFrame.roleBtns) do
+        if b.role == roleCheckFrame.sel then b:LockHighlight() else b:UnlockHighlight() end
+    end
+    roleCheckFrame.title:SetText((leaderName and leaderName ~= "" and (leaderName .. "'s role check")) or "Role check")
+    roleCheckFrame:Show()
+end
+
 local function CreateUI()
     if frame then
         return
@@ -665,6 +729,13 @@ local function CreateUI()
     local gHeader = left:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     gHeader:SetPoint("TOPLEFT", gdiv, "BOTTOMLEFT", 4, -6)
     gHeader:SetText("|cffffd100Group|r")
+
+    -- Role Check: the leader starts one; every member gets the role popup (server checks leader).
+    frame.roleCheckBtn = CreateFrame("Button", nil, left, "UIPanelButtonTemplate")
+    frame.roleCheckBtn:SetSize(86, 18)
+    frame.roleCheckBtn:SetPoint("LEFT", gHeader, "RIGHT", 10, 0)
+    frame.roleCheckBtn:SetText("Role Check")
+    frame.roleCheckBtn:SetScript("OnClick", function() SendCmd(".dwrolecheck") end)
 
     frame.rosterText = left:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     frame.rosterText:SetPoint("TOPLEFT", gHeader, "BOTTOMLEFT", 2, -4)
@@ -877,6 +948,11 @@ liveFrame:RegisterEvent("RAID_ROSTER_UPDATE")
 liveFrame:SetScript("OnEvent", function(_, event, prefix, message)
     if event == "CHAT_MSG_ADDON" then
         if prefix ~= "DEEPWARD" then return end
+        local rc = message:match("RC=(.*)")
+        if rc then                          -- leader started a role check -> pop the role picker
+            ShowRoleCheckPopup(rc)
+            return
+        end
         if ParseRoster(message) then       -- roster-only message ("G=...") -> just refresh the roster
             if RenderRoster then RenderRoster() end
             return
@@ -915,6 +991,9 @@ local function MountAnywhere() SendCmd(".dwmount") end
 SLASH_DEEPWARDMOUNT1 = "/dwmount"
 SLASH_DEEPWARDMOUNT2 = "/mnt"
 SlashCmdList["DEEPWARDMOUNT"] = MountAnywhere
+
+SLASH_DEEPWARDROLECHECK1 = "/rolecheck"
+SlashCmdList["DEEPWARDROLECHECK"] = function() SendCmd(".dwrolecheck") end   -- leader starts a role check
 _G.DeepwardTiers_Mount = MountAnywhere
 _G.BINDING_NAME_DEEPWARDTIERS_MOUNT = "Mount anywhere"
 
