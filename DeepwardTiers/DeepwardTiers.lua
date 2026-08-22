@@ -148,11 +148,22 @@ local function BotSlotCount()
     return slots
 end
 
+-- Ensure our SavedVariables fields exist AT RUNTIME. A DeepwardTiersDB saved before these fields existed
+-- (e.g. only had `role`) replaces the file-scope defaults when SavedVariables load -> botComp would be
+-- nil. Every function that reads the DB calls this first so the panel never indexes a nil comp.
+local function EnsureDB()
+    DeepwardTiersDB = DeepwardTiersDB or {}
+    if DeepwardTiersDB.role == nil then DeepwardTiersDB.role = "dps" end
+    if DeepwardTiersDB.botAuto == nil then DeepwardTiersDB.botAuto = true end
+    if type(DeepwardTiersDB.botComp) ~= "table" then DeepwardTiersDB.botComp = { t = 1, h = 1, d = 2 } end
+end
+
 -- Enter a specific løype by map id (explicit choice — e.g. replay Wailing Caverns with a friend).
 -- The server validates the map belongs to your current tier; an omitted map auto-routes to the
 -- first løype you haven't cleared. When a CUSTOM bot comp is set (not Auto) and it fills the free
 -- slots exactly, it's appended as "<t>-<h>-<d>"; otherwise the server auto-fills the roles.
 local function EnterDungeon(map)
+    EnsureDB()
     local role = DeepwardTiersDB.role or "dps"
     local cmd = ".enter " .. role
     local slots = BotSlotCount()
@@ -223,8 +234,8 @@ end
 -- Bump a role count in the chosen bot comp, clamped to [0, free slots] (total can't exceed the slots
 -- bots will fill). Any manual change switches OFF Auto.
 local function AdjustComp(key, delta)
+    EnsureDB()
     local c = DeepwardTiersDB.botComp
-    if not c then return end
     DeepwardTiersDB.botAuto = false
     local slots = BotSlotCount()
     local others = (c.t + c.h + c.d) - (c[key] or 0)
@@ -238,6 +249,7 @@ end
 
 RenderComp = function()
     if not frame or not frame.compHeader then return end
+    EnsureDB()
     local slots = BotSlotCount()
     frame.compHeader:SetText(("Bot comp — %d slot%s"):format(slots, slots == 1 and "" or "s"))
     if DeepwardTiersDB.botAuto then frame.autoBtn:LockHighlight() else frame.autoBtn:UnlockHighlight() end
@@ -834,6 +846,7 @@ local function CreateUI()
 end
 
 local function Toggle()
+    EnsureDB()
     CreateUI()
     if frame:IsShown() then
         frame:Hide()
