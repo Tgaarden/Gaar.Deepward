@@ -119,16 +119,50 @@ local function ParseLive(message)
     DeepwardLive = { tier = t, max = tonumber(message:match("M=(%d+)")) or t, cleared = cleared, killed = killed, admin = admin }
 end
 
+-- Live group roster, sent by the server as its own short "DEEPWARD\tG=name:role,name:role,..." message
+-- (separate from the progress payload so it never hits the 255-char addon limit).
+local DeepwardRoster   -- { {name=, role=}, ... }
+local function ParseRoster(message)
+    local g = message:match("G=([^;]*)")
+    if not g then return false end
+    local r = {}
+    for entry in g:gmatch("[^,]+") do
+        local name, role = entry:match("([^:]+):([^:]+)")
+        if name then table.insert(r, { name = name, role = role }) end
+    end
+    DeepwardRoster = r
+    return true
+end
+
 local function RequestSync()
+    SendCmd(".dwrole " .. (DeepwardTiersDB and DeepwardTiersDB.role or "dps"))   -- register my role for the roster
     SendCmd(".dwsync")
+end
+
+-- Bot slots = 5 minus the real players in your group (party/raid size; solo = 1 -> 4 bot slots).
+local function BotSlotCount()
+    local humans = (GetNumPartyMembers() or 0) + 1
+    if GetNumRaidMembers and GetNumRaidMembers() > 0 then humans = GetNumRaidMembers() end
+    local slots = 5 - humans
+    if slots < 0 then slots = 0 end
+    return slots
 end
 
 -- Enter a specific løype by map id (explicit choice — e.g. replay Wailing Caverns with a friend).
 -- The server validates the map belongs to your current tier; an omitted map auto-routes to the
--- first løype you haven't cleared.
+-- first løype you haven't cleared. When a CUSTOM bot comp is set (not Auto) and it fills the free
+-- slots exactly, it's appended as "<t>-<h>-<d>"; otherwise the server auto-fills the roles.
 local function EnterDungeon(map)
     local role = DeepwardTiersDB.role or "dps"
-    SendCmd(".enter " .. role .. (map and (" " .. map) or ""))
+    local cmd = ".enter " .. role
+    local slots = BotSlotCount()
+    local c = DeepwardTiersDB.botComp
+    if (not DeepwardTiersDB.botAuto) and c and slots > 0 and (c.t + c.h + c.d == slots) then
+        cmd = cmd .. " " .. (map or 0) .. " " .. c.t .. "-" .. c.h .. "-" .. c.d
+    elseif map then
+        cmd = cmd .. " " .. map
+    end
+    SendCmd(cmd)
 end
 
 -- Your current tier. TODO(server): the authoritative value is the character's `current_tier`,
@@ -175,6 +209,69 @@ local tierButtons = {}
 local selectedId = 1
 local selectedDungeonIdx = 1   -- which dungeon of the selected tier is shown (bg + info + Enter target)
 
+-- Bot-comp editor + live roster (idea #6). Forward-declared so CreateUI's button closures can call them.
+local RenderComp, RenderRoster, UpdateBadge
+
+-- Header badge (achievement-frame style): total bosses slain, from the live "B=" set.
+UpdateBadge = function()
+    if not frame or not frame.badge then return end
+    local n = 0
+    if DeepwardLive and DeepwardLive.killed then for _ in pairs(DeepwardLive.killed) do n = n + 1 end end
+    frame.badge:SetText(("%d"):format(n))
+end
+
+-- Bump a role count in the chosen bot comp, clamped to [0, free slots] (total can't exceed the slots
+-- bots will fill). Any manual change switches OFF Auto.
+local function AdjustComp(key, delta)
+    local c = DeepwardTiersDB.botComp
+    if not c then return end
+    DeepwardTiersDB.botAuto = false
+    local slots = BotSlotCount()
+    local others = (c.t + c.h + c.d) - (c[key] or 0)
+    local newv = (c[key] or 0) + delta
+    if newv < 0 then newv = 0 end
+    if others + newv > slots then newv = slots - others end
+    if newv < 0 then newv = 0 end
+    c[key] = newv
+    if RenderComp then RenderComp() end
+end
+
+RenderComp = function()
+    if not frame or not frame.compHeader then return end
+    local slots = BotSlotCount()
+    frame.compHeader:SetText(("Bot comp — %d slot%s"):format(slots, slots == 1 and "" or "s"))
+    if DeepwardTiersDB.botAuto then frame.autoBtn:LockHighlight() else frame.autoBtn:UnlockHighlight() end
+    local c = DeepwardTiersDB.botComp
+    for _, s in ipairs(frame.steppers or {}) do
+        s.cnt:SetText(tostring(c[s.key] or 0))
+        if DeepwardTiersDB.botAuto then s.cnt:SetTextColor(0.5, 0.5, 0.5) else s.cnt:SetTextColor(1, 1, 1) end
+    end
+    if frame.compRemain then
+        local rem = slots - (c.t + c.h + c.d)
+        if DeepwardTiersDB.botAuto then
+            frame.compRemain:SetText("|cff909090server fills the slots|r")
+        elseif rem == 0 then
+            frame.compRemain:SetText("|cff40ff40comp ready|r")
+        else
+            frame.compRemain:SetText(("|cffff8040%d unassigned|r"):format(rem))
+        end
+    end
+end
+
+RenderRoster = function()
+    if not frame or not frame.rosterText then return end
+    if not DeepwardRoster or #DeepwardRoster == 0 then
+        frame.rosterText:SetText("|cffa0a0a0(just you)|r")
+        return
+    end
+    local abbr = { tank = "|cff4080ffTank|r", healer = "|cff40ff40Heal|r", dps = "|cffff8040DPS|r" }
+    local parts = {}
+    for _, m in ipairs(DeepwardRoster) do
+        table.insert(parts, (m.name or "?") .. "  " .. (abbr[m.role] or "|cff909090?|r"))
+    end
+    frame.rosterText:SetText(table.concat(parts, "\n"))
+end
+
 -- Left-menu row label: mark the current tier "(current)" and every tier you've moved past with a
 -- green checkmark. Recomputed on open + on every live sync so the marker follows a tier-up without a
 -- reload. (Completed = below your current tier — you can only go up by clearing, so past == cleared.)
@@ -208,6 +305,9 @@ end
 -- composes Tank + 3 DPS + Healer around this role.
 DeepwardTiersDB = DeepwardTiersDB or {}
 DeepwardTiersDB.role = DeepwardTiersDB.role or "dps"
+-- Bot composition (for the slots bots fill). Auto = server decides (1T/1H/rest DPS around the humans).
+if DeepwardTiersDB.botAuto == nil then DeepwardTiersDB.botAuto = true end
+DeepwardTiersDB.botComp = DeepwardTiersDB.botComp or { t = 1, h = 1, d = 2 }
 
 local function UpdateRoleButtons()
     if not frame or not frame.roleButtons then return end
@@ -498,6 +598,18 @@ local function CreateUI()
     frame.summary = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlightLarge")
     frame.summary:SetPoint("TOP", title, "BOTTOM", 0, -8)
 
+    -- Header badge (achievement-frame style): a shield with the count of bosses slain, top-right of the title.
+    frame.badgeIcon = frame:CreateTexture(nil, "ARTWORK")
+    frame.badgeIcon:SetSize(30, 30)
+    frame.badgeIcon:SetPoint("RIGHT", title, "LEFT", -14, 0)
+    frame.badgeIcon:SetTexture("Interface\\Icons\\Achievement_Dungeon_UtgardePinnacle_75")
+    frame.badge = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    frame.badge:SetPoint("RIGHT", frame.badgeIcon, "LEFT", -4, 0)
+    frame.badge:SetText("0")
+    frame.badgeLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    frame.badgeLabel:SetPoint("TOP", frame.badgeIcon, "BOTTOM", 0, -1)
+    frame.badgeLabel:SetText("slain")
+
     -- Left: tier ("category") list. It has no art, so it gets the quest-log parchment as its
     -- background (+ a border) so the whole column reads as a solid beige field. The rows live in a
     -- scroll frame so a long tier list (up to 29) scrolls instead of overflowing.
@@ -516,11 +628,72 @@ local function CreateUI()
 
     local tierScroll = CreateFrame("ScrollFrame", "DeepwardTiersTierScroll", left, "UIPanelScrollFrameTemplate")
     tierScroll:SetPoint("TOPLEFT", 10, -10)
-    tierScroll:SetPoint("BOTTOMRIGHT", -28, 10)   -- -28 clears the scrollbar
+    tierScroll:SetPoint("BOTTOMRIGHT", -28, 208)   -- leave the lower part of the column for group/comp
     local tierChild = CreateFrame("Frame", nil, tierScroll)
     tierChild:SetSize(196, 10)
     tierScroll:SetScrollChild(tierChild)
     BuildTierList(tierChild)
+
+    -- Bottom of the left column: live group roster + bot-comp editor (idea #6). A thin divider on top.
+    local gdiv = left:CreateTexture(nil, "ARTWORK")
+    gdiv:SetHeight(2)
+    gdiv:SetPoint("TOPLEFT", tierScroll, "BOTTOMLEFT", 0, -2)
+    gdiv:SetPoint("TOPRIGHT", tierScroll, "BOTTOMRIGHT", 18, -2)
+    gdiv:SetTexture(0.5, 0.4, 0.15, 0.7)
+
+    local gHeader = left:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    gHeader:SetPoint("TOPLEFT", gdiv, "BOTTOMLEFT", 4, -6)
+    gHeader:SetText("|cffffd100Group|r")
+
+    frame.rosterText = left:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    frame.rosterText:SetPoint("TOPLEFT", gHeader, "BOTTOMLEFT", 2, -4)
+    frame.rosterText:SetWidth(196)
+    frame.rosterText:SetJustifyH("LEFT")
+    frame.rosterText:SetJustifyV("TOP")
+    frame.rosterText:SetText("|cffa0a0a0(just you)|r")
+
+    frame.compHeader = left:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    frame.compHeader:SetPoint("TOPLEFT", frame.rosterText, "BOTTOMLEFT", -2, -12)
+    frame.compHeader:SetText("|cffffd100Bot comp|r")
+
+    frame.autoBtn = CreateFrame("Button", nil, left, "UIPanelButtonTemplate")
+    frame.autoBtn:SetSize(58, 20)
+    frame.autoBtn:SetPoint("TOPLEFT", frame.compHeader, "BOTTOMLEFT", 2, -4)
+    frame.autoBtn:SetText("Auto")
+    frame.autoBtn:SetScript("OnClick", function()
+        DeepwardTiersDB.botAuto = true
+        RenderComp()
+    end)
+
+    -- Three steppers: T / H / D (each "-  n  +"), laid out to the right of the Auto button.
+    frame.steppers = {}
+    local sdefs = { { key = "t", lbl = "|cff4080ffT|r" }, { key = "h", lbl = "|cff40ff40H|r" }, { key = "d", lbl = "|cffff8040D|r" } }
+    for i, def in ipairs(sdefs) do
+        local rowY = -4 - (i - 1) * 24
+        local lbl = left:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+        lbl:SetPoint("TOPLEFT", frame.autoBtn, "BOTTOMLEFT", 2, rowY)
+        lbl:SetText(def.lbl)
+        local minus = CreateFrame("Button", nil, left, "UIPanelButtonTemplate")
+        minus:SetSize(20, 20)
+        minus:SetPoint("LEFT", lbl, "RIGHT", 8, 0)
+        minus:SetText("-")
+        local cnt = left:CreateFontString(nil, "ARTWORK", "GameFontHighlightLarge")
+        cnt:SetPoint("LEFT", minus, "RIGHT", 6, 0)
+        cnt:SetWidth(22)
+        cnt:SetJustifyH("CENTER")
+        cnt:SetText("0")
+        local plus = CreateFrame("Button", nil, left, "UIPanelButtonTemplate")
+        plus:SetSize(20, 20)
+        plus:SetPoint("LEFT", cnt, "RIGHT", 6, 0)
+        plus:SetText("+")
+        minus:SetScript("OnClick", function() AdjustComp(def.key, -1) end)
+        plus:SetScript("OnClick", function() AdjustComp(def.key, 1) end)
+        frame.steppers[i] = { key = def.key, lbl = lbl, minus = minus, cnt = cnt, plus = plus }
+    end
+
+    frame.compRemain = left:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    frame.compRemain:SetPoint("TOPLEFT", frame.steppers[3].lbl, "BOTTOMLEFT", 0, -6)
+    frame.compRemain:SetText("")
 
     -- Right: detail area. Background is the selected dungeon's loading-screen splash, dimmed so the
     -- text stays readable. (Art paths come from the client's LoadingScreens.dbc; the BLPs ship with
@@ -597,6 +770,7 @@ local function CreateUI()
         rb:SetScript("OnClick", function()
             DeepwardTiersDB.role = rb.role
             UpdateRoleButtons()
+            SendCmd(".dwrole " .. rb.role)   -- update the live group roster for everyone
         end)
         frame.roleButtons[i] = rb
     end
@@ -653,6 +827,10 @@ local function CreateUI()
     -- TODO(server): update this string from the pushed current_tier / level.
     local lvl = UnitLevel and UnitLevel("player") or 0
     frame.summary:SetText(("Current tier: %d   •   Level %d"):format(CurrentTierId(), lvl))
+
+    RenderComp()
+    RenderRoster()
+    UpdateBadge()
 end
 
 local function Toggle()
@@ -660,9 +838,11 @@ local function Toggle()
     if frame:IsShown() then
         frame:Hide()
     else
-        RequestSync()                       -- ask the server for fresh tier/clear state
+        RequestSync()                       -- ask the server for fresh tier/clear state + roster
         SelectTier(CurrentTierId())
         UpdateEnterButton()
+        RenderComp()                        -- slot count reflects current party size
+        RenderRoster()
         frame:Show()
     end
 end
@@ -670,11 +850,24 @@ end
 -- Live updates from the server: re-parse and, if the panel is open, re-render the current view.
 local liveFrame = CreateFrame("Frame")
 liveFrame:RegisterEvent("CHAT_MSG_ADDON")
-liveFrame:SetScript("OnEvent", function(_, _, prefix, message)
-    if prefix ~= "DEEPWARD" then return end
-    ParseLive(message)
-    if frame and frame:IsShown() then
-        SelectTier(selectedId or CurrentTierId())
+liveFrame:RegisterEvent("PARTY_MEMBERS_CHANGED")
+liveFrame:RegisterEvent("RAID_ROSTER_UPDATE")
+liveFrame:SetScript("OnEvent", function(_, event, prefix, message)
+    if event == "CHAT_MSG_ADDON" then
+        if prefix ~= "DEEPWARD" then return end
+        if ParseRoster(message) then       -- roster-only message ("G=...") -> just refresh the roster
+            if RenderRoster then RenderRoster() end
+            return
+        end
+        ParseLive(message)
+        if UpdateBadge then UpdateBadge() end
+        if frame and frame:IsShown() then
+            SelectTier(selectedId or CurrentTierId())
+        end
+    else
+        -- party/raid changed -> bot-slot count changed: refresh the comp, and re-pull the roster
+        if RenderComp then RenderComp() end
+        if frame and frame:IsShown() then RequestSync() end
     end
 end)
 
