@@ -59,6 +59,12 @@ loader:SetScript("OnEvent", function()
     -- 3) The Achievement UI is load-on-demand; stop it loading at all.
     if _G.AchievementFrame_LoadUI then _G.AchievementFrame_LoadUI = NoOp end
 
+    -- 3b) Achievements still fire server-side (level, exploration, cooking…). The earned-achievement
+    --     alert popup (AchievementAlertFrame_ShowAlert) builds a shield whose OnLoad lives in the
+    --     achievement UI we just blocked -> "AchievementShield_OnLoad (a nil value)" error spam.
+    --     Suppress the alert; Deepward shows progress in the tier panel, not achievement popups.
+    if _G.AchievementAlertFrame_ShowAlert then _G.AchievementAlertFrame_ShowAlert = NoOp end
+
     -- 4) If the frames are already present (or get built), keep them hidden.
     KillFrame(_G.AchievementFrame)
     KillFrame(_G.LFDParentFrame)
