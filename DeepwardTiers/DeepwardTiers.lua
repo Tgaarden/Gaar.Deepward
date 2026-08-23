@@ -247,6 +247,9 @@ local ROLE_COORDS = {
     dps    = { 0.3125, 0.609375, 0.34375,  0.640625 },
 }
 local ROLE_LABEL = { tank = "Tank", healer = "Healer", dps = "DPS" }
+-- Boss-status inline icons for the detail list (killed = green check, still up = skull).
+local BOSS_KILLED_ICON = "|TInterface\\RaidFrame\\ReadyCheck-Ready:15:15:0:-2|t"
+local BOSS_ALIVE_ICON  = "|TInterface\\TargetingFrame\\UI-TargetingFrame-Skull:15:15:0:-2|t"
 -- Inline (|T…|t) role icons for embedding in FontStrings (the group roster). 18px glyph, 64x64 source.
 local ROLE_INLINE = {
     tank   = "|TInterface\\LFGFrame\\UI-LFG-ICON-ROLES:18:18:0:0:64:64:0:19:22:41|t",
@@ -441,6 +444,22 @@ local function RenderDetail(tier)
 
     frame.detailTitle:SetText(sel and ("Tier %d — %s"):format(tier.id, sel.name) or ("Tier %d — %s"):format(tier.id, tier.name))
 
+    -- Clear-status badge (prominent, under the title).
+    if frame.statusBadge then
+        if sel then
+            local tot, kn = (sel.bosses and #sel.bosses) or 0, 0
+            if sel.bosses then for _, b in ipairs(sel.bosses) do if IsBossKilled(b) then kn = kn + 1 end end end
+            if IsDungeonCleared(sel) then
+                frame.statusBadge:SetText("|cff40ff40STATUS: Cleared|r")
+            else
+                frame.statusBadge:SetText(("|cffff6060STATUS: Not Cleared (%d/%d)|r"):format(kn, tot))
+            end
+            frame.statusBadge:Show()
+        else
+            frame.statusBadge:Hide()
+        end
+    end
+
     -- The panel now shows ONE dungeon at a time (the selected one) — background + info both follow
     -- the selection, and the Enter button targets it.
     local lines = {}
@@ -462,9 +481,9 @@ local function RenderDetail(tier)
             table.insert(lines, ("|cffffd100Bosses (%d/%d):|r  |cff808080(all required to clear)|r"):format(killedN, #sel.bosses))
             for _, b in ipairs(sel.bosses) do
                 if IsBossKilled(b) then
-                    table.insert(lines, ("   |cff40ff40v %s|r"):format(b.n))       -- slain
+                    table.insert(lines, ("   %s |cff40ff40%s|r"):format(BOSS_KILLED_ICON, b.n))   -- slain
                 else
-                    table.insert(lines, ("   |cffb0b0b0- %s|r"):format(b.n))       -- still up
+                    table.insert(lines, ("   %s |cffc8c8c8%s|r"):format(BOSS_ALIVE_ICON, b.n))    -- still up
                 end
             end
         end
@@ -816,19 +835,23 @@ local function CreateUI()
         local rc = ROLE_COORDS[def.role]
         lbl:SetTexture(ROLE_TEX)
         lbl:SetTexCoord(rc[1], rc[2], rc[3], rc[4])
-        local minus = CreateFrame("Button", nil, left, "UIPanelButtonTemplate")
-        minus:SetSize(20, 20)
+        local minus = CreateFrame("Button", nil, left)
+        minus:SetSize(24, 24)
         minus:SetPoint("LEFT", lbl, "RIGHT", 8, 0)
-        minus:SetText("-")
+        minus:SetNormalTexture("Interface\\Buttons\\UI-MinusButton-Up")
+        minus:SetPushedTexture("Interface\\Buttons\\UI-MinusButton-Down")
+        minus:SetHighlightTexture("Interface\\Buttons\\UI-PlusButton-Hilight")
         local cnt = left:CreateFontString(nil, "ARTWORK", "GameFontHighlightLarge")
         cnt:SetPoint("LEFT", minus, "RIGHT", 6, 0)
         cnt:SetWidth(22)
         cnt:SetJustifyH("CENTER")
         cnt:SetText("0")
-        local plus = CreateFrame("Button", nil, left, "UIPanelButtonTemplate")
-        plus:SetSize(20, 20)
+        local plus = CreateFrame("Button", nil, left)
+        plus:SetSize(24, 24)
         plus:SetPoint("LEFT", cnt, "RIGHT", 6, 0)
-        plus:SetText("+")
+        plus:SetNormalTexture("Interface\\Buttons\\UI-PlusButton-Up")
+        plus:SetPushedTexture("Interface\\Buttons\\UI-PlusButton-Down")
+        plus:SetHighlightTexture("Interface\\Buttons\\UI-PlusButton-Hilight")
         minus:SetScript("OnClick", function() AdjustComp(def.key, -1) end)
         plus:SetScript("OnClick", function() AdjustComp(def.key, 1) end)
         frame.steppers[i] = { key = def.key, lbl = lbl, minus = minus, cnt = cnt, plus = plus }
@@ -865,6 +888,10 @@ local function CreateUI()
     -- against the top edge.
     frame.detailTitle = right:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
     frame.detailTitle:SetPoint("TOPLEFT", 18, -110)   -- sits just under the splash's WARCRAFT logo
+
+    -- Prominent clear-status badge under the title (mockup: "STATUS: Not Cleared (x/y)").
+    frame.statusBadge = right:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    frame.statusBadge:SetPoint("TOPLEFT", frame.detailTitle, "BOTTOMLEFT", 2, -6)
 
     -- Body lives in a scroll frame spanning from below the title down to just above the button row,
     -- so long descriptions scroll within the beige field instead of spilling over the buttons.
