@@ -723,7 +723,7 @@ local function CreateUI()
     -- Custom titan frame art (blue) — it IS the whole window: border + all panel backings.
     frame.frameArt = frame:CreateTexture(nil, "BACKGROUND", nil, -8)
     frame.frameArt:SetAllPoints()
-    frame.frameArt:SetTexture("Interface\\AddOns\\DeepwardTiers\\frame.tga")
+    frame.frameArt:SetTexture("Interface\\AddOns\\DeepwardTiers\\frame.blp")   -- BLP (3.3.5 won't load addon .tga)
     frame.frameArt:SetTexCoord(0, 1, 0, 0.7744)   -- frame occupies the top 793px of the 1024 texture
 
     local title = frame:CreateFontString(nil, "ARTWORK", "GameFontNormalHuge")
