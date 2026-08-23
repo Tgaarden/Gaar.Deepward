@@ -706,17 +706,9 @@ local function CreateUI()
     end
 
     frame = CreateFrame("Frame", "DeepwardTiersFrame", UIParent)
-    frame:SetSize(880, 680)
+    frame:SetSize(1060, 820)                            -- matches the frame art aspect (1178x912 ~ 1.29:1)
     frame:SetPoint("CENTER")
     frame:SetFrameStrata("HIGH")
-    frame:SetBackdrop({
-        bgFile   = "Interface\\DialogFrame\\UI-DialogBox-Background",
-        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-        tile = true, tileSize = 32, edgeSize = 32,
-        insets = { left = 11, right = 12, top = 12, bottom = 11 },
-    })
-    frame:SetBackdropBorderColor(0.55, 0.72, 1.0)      -- blue-steel frame (titan theme)
-    frame:SetBackdropColor(0.14, 0.19, 0.30, 1)        -- dark blue behind the stone fill
     frame:EnableMouse(true)
     frame:SetMovable(true)
     frame:RegisterForDrag("LeftButton")
@@ -728,12 +720,11 @@ local function CreateUI()
     -- Opaque quest-log parchment behind the WHOLE window so nothing shows the game world through it
     -- (the dialog backdrop alone rendered see-through). The right-hand art panel is a child frame, so
     -- it still draws on top of this. Plain stretched texture — more reliable than a tiled backdrop bg.
-    frame.bgParch = frame:CreateTexture(nil, "BACKGROUND", nil, -8)
-    frame.bgParch:SetPoint("TOPLEFT", 6, -6)
-    frame.bgParch:SetPoint("BOTTOMRIGHT", -6, 6)
-    frame.bgParch:SetTexture("Interface\\FrameGeneral\\UI-Background-Marble")   -- stone, tinted blue (titan/Ulduar theme)
-    frame.bgParch:SetTexCoord(0, 1, 0, 1)
-    frame.bgParch:SetVertexColor(0.42, 0.55, 0.78)   -- blue stone
+    -- Custom titan frame art (blue) — it IS the whole window: border + all panel backings.
+    frame.frameArt = frame:CreateTexture(nil, "BACKGROUND", nil, -8)
+    frame.frameArt:SetAllPoints()
+    frame.frameArt:SetTexture("Interface\\AddOns\\DeepwardTiers\\frame.tga")
+    frame.frameArt:SetTexCoord(0, 1, 0, 0.7744)   -- frame occupies the top 793px of the 1024 texture
 
     local title = frame:CreateFontString(nil, "ARTWORK", "GameFontNormalHuge")
     title:SetPoint("TOP", 0, -20)
@@ -758,30 +749,15 @@ local function CreateUI()
     frame.badgeLabel:SetText("slain")
 
     -- Gold divider under the header (achievements-frame banner separation).
-    local hdiv = frame:CreateTexture(nil, "ARTWORK")
-    hdiv:SetHeight(2)
-    hdiv:SetPoint("TOPLEFT", frame, "TOPLEFT", 20, -92)
-    hdiv:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -20, -92)
-    hdiv:SetTexture(0.35, 0.62, 0.95, 0.9)   -- blue divider (titan theme)
+    -- (header divider removed — the frame art provides its own separations)
 
     -- Left: tier ("category") list. It has no art, so it gets the quest-log parchment as its
     -- background (+ a border) so the whole column reads as a solid beige field. The rows live in a
     -- scroll frame so a long tier list (up to 29) scrolls instead of overflowing.
+    -- Left container: transparent now (the frame art draws the slot plates + sub-panel underneath).
     local left = CreateFrame("Frame", nil, frame)
     left:SetPoint("TOPLEFT", 24, -100)
     left:SetSize(236, 548)
-    left:SetBackdrop({
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        edgeSize = 14,
-    })
-    left:SetBackdropBorderColor(0.55, 0.72, 1.0)   -- blue-steel column border
-    -- Opaque parchment fill for the menu column (the backdrop bgFile rendered see-through).
-    left.parch = left:CreateTexture(nil, "BACKGROUND", nil, -7)
-    left.parch:SetPoint("TOPLEFT", 5, -5)
-    left.parch:SetPoint("BOTTOMRIGHT", -5, 5)
-    left.parch:SetTexture("Interface\\FrameGeneral\\UI-Background-Marble")
-    left.parch:SetTexCoord(0, 1, 0, 1)
-    left.parch:SetVertexColor(0.42, 0.55, 0.78)   -- blue stone, matches the main background
 
     local tierScroll = CreateFrame("ScrollFrame", "DeepwardTiersTierScroll", left, "UIPanelScrollFrameTemplate")
     tierScroll:SetPoint("TOPLEFT", 10, -10)
@@ -791,15 +767,11 @@ local function CreateUI()
     tierScroll:SetScrollChild(tierChild)
     BuildTierList(tierChild)
 
-    -- Bottom of the left column: live group roster + bot-comp editor (idea #6). A thin divider on top.
-    local gdiv = left:CreateTexture(nil, "ARTWORK")
-    gdiv:SetHeight(2)
-    gdiv:SetPoint("TOPLEFT", tierScroll, "BOTTOMLEFT", 0, -2)
-    gdiv:SetPoint("TOPRIGHT", tierScroll, "BOTTOMRIGHT", 18, -2)
-    gdiv:SetTexture(0.5, 0.4, 0.15, 0.7)
+    -- Bottom of the left column: live group roster + bot-comp editor.
+    local gHeaderAnchor = tierScroll
 
     local gHeader = left:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    gHeader:SetPoint("TOPLEFT", gdiv, "BOTTOMLEFT", 4, -6)
+    gHeader:SetPoint("TOPLEFT", gHeaderAnchor, "BOTTOMLEFT", 4, -6)
     gHeader:SetText("|cffffd100Group|r")
 
     -- Role Check: the leader starts one; every member gets the role popup (server checks leader).
