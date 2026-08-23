@@ -247,6 +247,12 @@ local ROLE_COORDS = {
     dps    = { 0.3125, 0.609375, 0.34375,  0.640625 },
 }
 local ROLE_LABEL = { tank = "Tank", healer = "Healer", dps = "DPS" }
+-- Inline (|T…|t) role icons for embedding in FontStrings (the group roster). 14px glyph, 64x64 source.
+local ROLE_INLINE = {
+    tank   = "|TInterface\\LFGFrame\\UI-LFG-ICON-ROLES:14:14:0:0:64:64:0:19:22:41|t",
+    healer = "|TInterface\\LFGFrame\\UI-LFG-ICON-ROLES:14:14:0:0:64:64:20:39:1:20|t",
+    dps    = "|TInterface\\LFGFrame\\UI-LFG-ICON-ROLES:14:14:0:0:64:64:20:39:22:41|t",
+}
 
 -- A clickable role-icon button. The icon is the normal texture; a square glow (SetHighlightTexture)
 -- shows on hover and, via LockHighlight()/UnlockHighlight(), marks the selected role.
@@ -323,10 +329,9 @@ RenderRoster = function()
         frame.rosterText:SetText("|cffa0a0a0(just you)|r")
         return
     end
-    local abbr = { tank = "|cff4080ffTank|r", healer = "|cff40ff40Heal|r", dps = "|cffff8040DPS|r" }
     local parts = {}
     for _, m in ipairs(DeepwardRoster) do
-        table.insert(parts, (m.name or "?") .. "  " .. (abbr[m.role] or "|cff909090?|r"))
+        table.insert(parts, (m.name or "?") .. "  " .. (ROLE_INLINE[m.role] or "|cff909090?|r"))
     end
     frame.rosterText:SetText(table.concat(parts, "\n"))
 end
@@ -431,8 +436,8 @@ local function RenderDetail(tier)
     -- Bottom-band sits LOW in the beige strip under the splash: role cluster just below the art, Enter
     -- at the very bottom. (Lower Y = closer to the panel bottom.)
     local roleBtnY   = twoRows and 78 or 44
-    local roleLabelY = roleBtnY + 26
-    local selectorY  = roleBtnY + 56
+    local roleLabelY = roleBtnY + 48   -- label sits clear ABOVE the role icons (they're ~40px tall)
+    local selectorY  = roleBtnY + 80   -- dungeon selectors above the label/icon cluster
 
     frame.detailTitle:SetText(sel and ("Tier %d — %s"):format(tier.id, sel.name) or ("Tier %d — %s"):format(tier.id, tier.name))
 
@@ -509,10 +514,9 @@ local function RenderDetail(tier)
         frame.roleLabel:Show()
         frame.roleLabel:ClearAllPoints()
         frame.roleLabel:SetPoint("BOTTOM", frame.rightPanel, "BOTTOM", 0, roleLabelY)
-        local rbw = 124
         for i, rb in ipairs(frame.roleButtons) do
             rb:ClearAllPoints()
-            rb:SetPoint("BOTTOM", frame.rightPanel, "BOTTOM", (i - 2) * (rbw + 10), roleBtnY)
+            rb:SetPoint("BOTTOM", frame.rightPanel, "BOTTOM", (i - 2) * 54, roleBtnY)
             rb:Show()
         end
     else
@@ -899,10 +903,10 @@ local function CreateUI()
 
     frame.roleButtons = {}
     local roleOrder = { "tank", "dps", "healer" }
-    local isz = 44
+    local isz = 40
     for i, r in ipairs(roleOrder) do
         local rb = MakeRoleIcon(right, r, isz)
-        rb:SetPoint("BOTTOM", right, "BOTTOM", (i - 2) * (isz + 24), 92)
+        rb:SetPoint("BOTTOM", right, "BOTTOM", (i - 2) * 54, 92)
         rb:SetScript("OnClick", function()
             DeepwardTiersDB.role = rb.role
             UpdateRoleButtons()
