@@ -247,11 +247,11 @@ local ROLE_COORDS = {
     dps    = { 0.3125, 0.609375, 0.34375,  0.640625 },
 }
 local ROLE_LABEL = { tank = "Tank", healer = "Healer", dps = "DPS" }
--- Inline (|T…|t) role icons for embedding in FontStrings (the group roster). 14px glyph, 64x64 source.
+-- Inline (|T…|t) role icons for embedding in FontStrings (the group roster). 18px glyph, 64x64 source.
 local ROLE_INLINE = {
-    tank   = "|TInterface\\LFGFrame\\UI-LFG-ICON-ROLES:14:14:0:0:64:64:0:19:22:41|t",
-    healer = "|TInterface\\LFGFrame\\UI-LFG-ICON-ROLES:14:14:0:0:64:64:20:39:1:20|t",
-    dps    = "|TInterface\\LFGFrame\\UI-LFG-ICON-ROLES:14:14:0:0:64:64:20:39:22:41|t",
+    tank   = "|TInterface\\LFGFrame\\UI-LFG-ICON-ROLES:18:18:0:0:64:64:0:19:22:41|t",
+    healer = "|TInterface\\LFGFrame\\UI-LFG-ICON-ROLES:18:18:0:0:64:64:20:39:1:20|t",
+    dps    = "|TInterface\\LFGFrame\\UI-LFG-ICON-ROLES:18:18:0:0:64:64:20:39:22:41|t",
 }
 
 -- A clickable role-icon button. The icon is the normal texture; a square glow (SetHighlightTexture)
