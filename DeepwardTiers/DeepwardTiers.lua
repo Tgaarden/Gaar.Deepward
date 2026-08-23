@@ -715,6 +715,8 @@ local function CreateUI()
         tile = true, tileSize = 32, edgeSize = 32,
         insets = { left = 11, right = 12, top = 12, bottom = 11 },
     })
+    frame:SetBackdropBorderColor(0.55, 0.72, 1.0)      -- blue-steel frame (titan theme)
+    frame:SetBackdropColor(0.14, 0.19, 0.30, 1)        -- dark blue behind the stone fill
     frame:EnableMouse(true)
     frame:SetMovable(true)
     frame:RegisterForDrag("LeftButton")
@@ -729,8 +731,9 @@ local function CreateUI()
     frame.bgParch = frame:CreateTexture(nil, "BACKGROUND", nil, -8)
     frame.bgParch:SetPoint("TOPLEFT", 6, -6)
     frame.bgParch:SetPoint("BOTTOMRIGHT", -6, 6)
-    frame.bgParch:SetTexture("Interface\\AchievementFrame\\UI-Achievement-Parchment-Horizontal")   -- achievements look
+    frame.bgParch:SetTexture("Interface\\FrameGeneral\\UI-Background-Marble")   -- stone, tinted blue (titan/Ulduar theme)
     frame.bgParch:SetTexCoord(0, 1, 0, 1)
+    frame.bgParch:SetVertexColor(0.42, 0.55, 0.78)   -- blue stone
 
     local title = frame:CreateFontString(nil, "ARTWORK", "GameFontNormalHuge")
     title:SetPoint("TOP", 0, -20)
@@ -759,7 +762,7 @@ local function CreateUI()
     hdiv:SetHeight(2)
     hdiv:SetPoint("TOPLEFT", frame, "TOPLEFT", 20, -92)
     hdiv:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -20, -92)
-    hdiv:SetTexture(0.72, 0.56, 0.22, 0.85)
+    hdiv:SetTexture(0.35, 0.62, 0.95, 0.9)   -- blue divider (titan theme)
 
     -- Left: tier ("category") list. It has no art, so it gets the quest-log parchment as its
     -- background (+ a border) so the whole column reads as a solid beige field. The rows live in a
@@ -771,12 +774,14 @@ local function CreateUI()
         edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
         edgeSize = 14,
     })
+    left:SetBackdropBorderColor(0.55, 0.72, 1.0)   -- blue-steel column border
     -- Opaque parchment fill for the menu column (the backdrop bgFile rendered see-through).
     left.parch = left:CreateTexture(nil, "BACKGROUND", nil, -7)
     left.parch:SetPoint("TOPLEFT", 5, -5)
     left.parch:SetPoint("BOTTOMRIGHT", -5, 5)
-    left.parch:SetTexture("Interface\\AchievementFrame\\UI-Achievement-Parchment-Horizontal")
-    left.parch:SetTexCoord(0, 0.5, 0, 1)   -- left slice of the parchment for the narrow column
+    left.parch:SetTexture("Interface\\FrameGeneral\\UI-Background-Marble")
+    left.parch:SetTexCoord(0, 1, 0, 1)
+    left.parch:SetVertexColor(0.42, 0.55, 0.78)   -- blue stone, matches the main background
 
     local tierScroll = CreateFrame("ScrollFrame", "DeepwardTiersTierScroll", left, "UIPanelScrollFrameTemplate")
     tierScroll:SetPoint("TOPLEFT", 10, -10)
@@ -875,8 +880,8 @@ local function CreateUI()
     -- Parchment fallback, shown when a tier/dungeon has no art (keeps the panel from going black).
     frame.artFallback = right:CreateTexture(nil, "BACKGROUND")
     frame.artFallback:SetAllPoints()
-    frame.artFallback:SetTexture("Interface\\AchievementFrame\\UI-Achievement-Parchment-Horizontal")
-    frame.artFallback:SetVertexColor(1, 1, 1, 0.9)
+    frame.artFallback:SetTexture("Interface\\FrameGeneral\\UI-Background-Marble")
+    frame.artFallback:SetVertexColor(0.42, 0.55, 0.78, 1)   -- blue stone fallback (matches the theme)
 
     local dark = right:CreateTexture(nil, "ARTWORK")
     dark:SetAllPoints()
@@ -896,7 +901,7 @@ local function CreateUI()
     -- Body lives in a scroll frame spanning from below the title down to just above the button row,
     -- so long descriptions scroll within the beige field instead of spilling over the buttons.
     local bodyScroll = CreateFrame("ScrollFrame", "DeepwardTiersBodyScroll", right, "UIPanelScrollFrameTemplate")
-    bodyScroll:SetPoint("TOPLEFT", 18, -145)           -- top sits just under the title (taller scroll = more text visible)
+    bodyScroll:SetPoint("TOPLEFT", 18, -170)           -- top sits below the title + STATUS badge (avoids overlapping Level)
     bodyScroll:SetPoint("BOTTOMRIGHT", -30, 138)       -- extends lower now the buttons sit lower (taller text area)
     local bodyChild = CreateFrame("Frame", nil, bodyScroll)
     bodyChild:SetSize(516, 10)
