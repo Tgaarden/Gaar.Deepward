@@ -241,11 +241,12 @@ local selectedDungeonIdx = 1   -- which dungeon of the selected tier is shown (b
 -- Standard WotLK LFG role icons (Interface\LFGFrame\UI-LFG-ICON-ROLES), shared by the panel role
 -- selector, the bot-comp steppers, and the role-check popup — used instead of text/letters.
 local ROLE_TEX = "Interface\\LFGFrame\\UI-LFG-ICON-ROLES"
--- Tightened ~0.75px inset into each 19px cell to trim edge-bleed from neighbouring icons.
+-- Hand-tuned crop windows (shifted right + down to centre each icon in its cell; tank/dps shifted
+-- equally and more than healer).
 local ROLE_COORDS = {
-    tank   = { 0.012, 0.285,    0.356,    0.629    },
-    healer = { 0.324, 0.597,    0.028,    0.300    },
-    dps    = { 0.324, 0.597,    0.356,    0.629    },
+    tank   = { 0.062, 0.335,    0.406,    0.679    },
+    healer = { 0.344, 0.617,    0.058,    0.330    },
+    dps    = { 0.374, 0.647,    0.406,    0.679    },
 }
 local ROLE_LABEL = { tank = "Tank", healer = "Healer", dps = "DPS" }
 -- Boss-status inline icons for the detail list (killed = green check, still up = skull).
