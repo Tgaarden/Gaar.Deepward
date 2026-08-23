@@ -238,6 +238,36 @@ local selectedId = 1
 local selectedDungeonIdx = 1   -- which dungeon of the selected tier is shown (bg + info + Enter target)
 
 -- Bot-comp editor + live roster (idea #6). Forward-declared so CreateUI's button closures can call them.
+-- Standard WotLK LFG role icons (Interface\LFGFrame\UI-LFG-ICON-ROLES), shared by the panel role
+-- selector, the bot-comp steppers, and the role-check popup — used instead of text/letters.
+local ROLE_TEX = "Interface\\LFGFrame\\UI-LFG-ICON-ROLES"
+local ROLE_COORDS = {
+    tank   = { 0,      0.296875, 0.34375,  0.640625 },
+    healer = { 0.3125, 0.609375, 0.015625, 0.3125   },
+    dps    = { 0.3125, 0.609375, 0.34375,  0.640625 },
+}
+local ROLE_LABEL = { tank = "Tank", healer = "Healer", dps = "DPS" }
+
+-- A clickable role-icon button. The icon is the normal texture; a square glow (SetHighlightTexture)
+-- shows on hover and, via LockHighlight()/UnlockHighlight(), marks the selected role.
+local function MakeRoleIcon(parent, role, size)
+    local btn = CreateFrame("Button", nil, parent)
+    btn:SetSize(size, size)
+    local c = ROLE_COORDS[role]
+    btn:SetNormalTexture(ROLE_TEX)
+    btn:GetNormalTexture():SetTexCoord(c[1], c[2], c[3], c[4])
+    btn:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square")
+    btn:GetHighlightTexture():SetBlendMode("ADD")
+    btn.role = role
+    btn:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText(ROLE_LABEL[role])
+        GameTooltip:Show()
+    end)
+    btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    return btn
+end
+
 local RenderComp, RenderRoster, UpdateBadge
 
 -- Header badge (achievement-frame style): total bosses slain, from the live "B=" set.
@@ -609,13 +639,10 @@ local function ShowRoleCheckPopup(leaderName)
         f.title:SetPoint("TOP", 0, -16)
         f.sel = nil
         f.roleBtns = {}
-        local roles = { "Tank", "DPS", "Healer" }
-        for i, r in ipairs(roles) do
-            local rb = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-            rb:SetSize(80, 28)
-            rb:SetPoint("TOP", f, "TOP", (i - 2) * 86, -48)
-            rb:SetText(r)
-            rb.role = string.lower(r)
+        local roleOrder = { "tank", "dps", "healer" }
+        for i, r in ipairs(roleOrder) do
+            local rb = MakeRoleIcon(f, r, 44)
+            rb:SetPoint("TOP", f, "TOP", (i - 2) * 58, -46)
             rb:SetScript("OnClick", function()
                 f.sel = rb.role
                 for _, b in ipairs(f.roleBtns) do
@@ -776,12 +803,15 @@ local function CreateUI()
 
     -- Three steppers: T / H / D (each "-  n  +"), laid out to the right of the Auto button.
     frame.steppers = {}
-    local sdefs = { { key = "t", lbl = "|cff4080ffT|r" }, { key = "h", lbl = "|cff40ff40H|r" }, { key = "d", lbl = "|cffff8040D|r" } }
+    local sdefs = { { key = "t", role = "tank" }, { key = "h", role = "healer" }, { key = "d", role = "dps" } }
     for i, def in ipairs(sdefs) do
         local rowY = -4 - (i - 1) * 24
-        local lbl = left:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+        local lbl = left:CreateTexture(nil, "ARTWORK")
+        lbl:SetSize(18, 18)
         lbl:SetPoint("TOPLEFT", frame.autoBtn, "BOTTOMLEFT", 2, rowY)
-        lbl:SetText(def.lbl)
+        local rc = ROLE_COORDS[def.role]
+        lbl:SetTexture(ROLE_TEX)
+        lbl:SetTexCoord(rc[1], rc[2], rc[3], rc[4])
         local minus = CreateFrame("Button", nil, left, "UIPanelButtonTemplate")
         minus:SetSize(20, 20)
         minus:SetPoint("LEFT", lbl, "RIGHT", 8, 0)
@@ -868,14 +898,11 @@ local function CreateUI()
     frame.roleLabel:SetText("Your role:")
 
     frame.roleButtons = {}
-    local roles = { "Tank", "DPS", "Healer" }
-    local rbw = 124
-    for i, r in ipairs(roles) do
-        local rb = CreateFrame("Button", nil, right, "UIPanelButtonTemplate")
-        rb:SetSize(rbw, 26)
-        rb:SetPoint("BOTTOM", right, "BOTTOM", (i - 2) * (rbw + 10), 96)
-        rb:SetText(r)
-        rb.role = string.lower(r)
+    local roleOrder = { "tank", "dps", "healer" }
+    local isz = 44
+    for i, r in ipairs(roleOrder) do
+        local rb = MakeRoleIcon(right, r, isz)
+        rb:SetPoint("BOTTOM", right, "BOTTOM", (i - 2) * (isz + 24), 92)
         rb:SetScript("OnClick", function()
             DeepwardTiersDB.role = rb.role
             UpdateRoleButtons()
