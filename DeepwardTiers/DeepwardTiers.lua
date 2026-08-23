@@ -241,10 +241,11 @@ local selectedDungeonIdx = 1   -- which dungeon of the selected tier is shown (b
 -- Standard WotLK LFG role icons (Interface\LFGFrame\UI-LFG-ICON-ROLES), shared by the panel role
 -- selector, the bot-comp steppers, and the role-check popup — used instead of text/letters.
 local ROLE_TEX = "Interface\\LFGFrame\\UI-LFG-ICON-ROLES"
+-- Tightened ~0.75px inset into each 19px cell to trim edge-bleed from neighbouring icons.
 local ROLE_COORDS = {
-    tank   = { 0,      0.296875, 0.34375,  0.640625 },
-    healer = { 0.3125, 0.609375, 0.015625, 0.3125   },
-    dps    = { 0.3125, 0.609375, 0.34375,  0.640625 },
+    tank   = { 0.012, 0.285,    0.356,    0.629    },
+    healer = { 0.324, 0.597,    0.028,    0.300    },
+    dps    = { 0.324, 0.597,    0.356,    0.629    },
 }
 local ROLE_LABEL = { tank = "Tank", healer = "Healer", dps = "DPS" }
 -- Boss-status inline icons for the detail list (killed = green check, still up = skull).
@@ -332,9 +333,10 @@ RenderRoster = function()
         frame.rosterText:SetText("|cffa0a0a0(just you)|r")
         return
     end
+    local abbr = { tank = "|cff4080ffTank|r", healer = "|cff40ff40Heal|r", dps = "|cffff8040DPS|r" }
     local parts = {}
     for _, m in ipairs(DeepwardRoster) do
-        table.insert(parts, (m.name or "?") .. "  " .. (ROLE_INLINE[m.role] or "|cff909090?|r"))
+        table.insert(parts, (m.name or "?") .. "  " .. (abbr[m.role] or "|cff909090?|r"))
     end
     frame.rosterText:SetText(table.concat(parts, "\n"))
 end
