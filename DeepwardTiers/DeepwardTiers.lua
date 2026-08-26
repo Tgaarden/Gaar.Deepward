@@ -85,7 +85,112 @@ local TIERS = {
             },
         },
     },
-    -- Tiers 4–29 (Ascension) are appended as they're specified. Locked until reached.
+    -- Tier 4 — Scarlet Monastery (Graveyard + Library), Gnomeregan, Razorfen Kraul. Clear 2 of 4.
+    {
+        id = 4, name = "SM Graveyard / SM Library / Gnomeregan / Razorfen Kraul", level = 36, wipeBudget = 3,
+        gear = "Earned from drops + Sylvanas caches",
+        dungeons = {
+            {
+                name = "Scarlet Monastery: Graveyard", cleared = false, map = 189,
+                art = "Interface\\Glues\\LoadingScreens\\LoadScreenScarletMonastery",
+                loc = "Tirisfal Glades", range = "28–38",
+                desc = "The Scarlet Crusade's graveyard wing, haunted by Bloodmage Thalnos.",
+                bosses = { {n="Interrogator Vishas",e=3983}, {n="Bloodmage Thalnos",e=4543} },
+            },
+            {
+                name = "Scarlet Monastery: Library", cleared = false, map = 189,
+                art = "Interface\\Glues\\LoadingScreens\\LoadScreenScarletMonastery",
+                loc = "Tirisfal Glades", range = "29–39",
+                desc = "The Crusade's library, guarded by Arcanist Doan.",
+                bosses = { {n="Houndmaster Loksey",e=3974}, {n="Arcanist Doan",e=6487} },
+            },
+            {
+                name = "Gnomeregan", cleared = false, map = 90,
+                art = "Interface\\Glues\\LoadingScreens\\LoadScreenGnomeregan",
+                loc = "Dun Morogh", range = "29–38",
+                desc = "The irradiated gnome city, seized by troggs and Mekgineer Thermaplugg.",
+                bosses = { {n="Electrocutioner 6000",e=6235}, {n="Mekgineer Thermaplugg",e=7800} },
+            },
+            {
+                name = "Razorfen Kraul", cleared = false, map = 47,
+                art = "Interface\\Glues\\LoadingScreens\\LoadScreenRazorfenKraul",
+                loc = "The Barrens", range = "30–40",
+                desc = "The quillboar warren of thorns, ruled by Charlga Razorflank.",
+                bosses = { {n="Aggem Thorncurse",e=4424}, {n="Death Speaker Jargba",e=4428}, {n="Overlord Ramtusk",e=4420}, {n="Charlga Razorflank",e=4421} },
+            },
+        },
+    },
+    -- Tier 5 — Scarlet Monastery (Armory + Cathedral). Clear 1 of 2.
+    {
+        id = 5, name = "SM Armory / SM Cathedral", level = 42, wipeBudget = 3,
+        gear = "Earned from drops + Sylvanas caches",
+        dungeons = {
+            {
+                name = "Scarlet Monastery: Armory", cleared = false, map = 189,
+                art = "Interface\\Glues\\LoadingScreens\\LoadScreenScarletMonastery",
+                loc = "Tirisfal Glades", range = "34–44",
+                desc = "The Crusade's armory — Herod, the Scarlet Champion, holds the hall.",
+                bosses = { {n="Herod",e=3975} },
+            },
+            {
+                name = "Scarlet Monastery: Cathedral", cleared = false, map = 189,
+                art = "Interface\\Glues\\LoadingScreens\\LoadScreenScarletMonastery",
+                loc = "Tirisfal Glades", range = "35–45",
+                desc = "The grand cathedral of Mograine and High Inquisitor Whitemane.",
+                bosses = { {n="Scarlet Commander Mograine",e=3976}, {n="High Inquisitor Whitemane",e=3977} },
+            },
+        },
+    },
+    -- Tier 6 — Razorfen Downs, Uldaman. Clear 1 of 2.
+    {
+        id = 6, name = "Razorfen Downs / Uldaman", level = 48, wipeBudget = 3,
+        gear = "Earned from drops + Sylvanas caches",
+        dungeons = {
+            {
+                name = "Razorfen Downs", cleared = false, map = 129,
+                art = "Interface\\Glues\\LoadingScreens\\LoadScreenRazorfenDowns",
+                loc = "Thousand Needles", range = "37–47",
+                desc = "The undead quillboar necropolis, raised by Amnennar the Coldbringer.",
+                bosses = { {n="Mordresh Fire Eye",e=7357}, {n="Amnennar the Coldbringer",e=7358} },
+            },
+            {
+                name = "Uldaman", cleared = false, map = 70,
+                art = "Interface\\Glues\\LoadingScreens\\LoadScreenUldaman",
+                loc = "Badlands", range = "41–51",
+                desc = "The titan vault beneath the Badlands, sealed by the guardian Archaedas.",
+                bosses = { {n="Revelosh",e=6910}, {n="Archaedas",e=2748} },
+            },
+        },
+    },
+    -- Tier 7 — Zul'Farrak, Maraudon, Sunken Temple. Clear 2 of 3.
+    {
+        id = 7, name = "Zul'Farrak / Maraudon / Sunken Temple", level = 54, wipeBudget = 3,
+        gear = "Earned from drops + Sylvanas caches",
+        dungeons = {
+            {
+                name = "Zul'Farrak", cleared = false, map = 209,
+                art = "Interface\\Glues\\LoadingScreens\\LoadScreenZulFarrak",
+                loc = "Tanaris", range = "44–54",
+                desc = "The Sandfury troll city in Tanaris, ruled by Chief Ukorz Sandscalp.",
+                bosses = { {n="Theka the Martyr",e=7272}, {n="Witch Doctor Zum'rah",e=7271}, {n="Hydromancer Velratha",e=7795}, {n="Chief Ukorz Sandscalp",e=7267} },
+            },
+            {
+                name = "Maraudon", cleared = false, map = 349,
+                art = "Interface\\Glues\\LoadingScreens\\LoadScreenMaraudon",
+                loc = "Desolace", range = "46–55",
+                desc = "The petrified caverns under Desolace, home of Princess Theradras.",
+                bosses = { {n="Celebras the Cursed",e=12225}, {n="Landslide",e=12203}, {n="Princess Theradras",e=12201} },
+            },
+            {
+                name = "Sunken Temple", cleared = false, map = 109,
+                art = "Interface\\Glues\\LoadingScreens\\LoadScreenSunkenTemple",
+                loc = "Swamp of Sorrows", range = "50–60",
+                desc = "The Temple of Atal'Hakkar in the Swamp of Sorrows — the Atal'ai and Jammal'an the Prophet.",
+                bosses = { {n="Ogom the Wretched",e=5711}, {n="Jammal'an the Prophet",e=5710} },
+            },
+        },
+    },
+    -- Tiers 8 (Farm) + 9 (Raid) come later. Tier 66 below is the current Molten Core capstone.
     {
         id = 66, name = "Molten Core", level = 60, wipeBudget = 3,
         gear = "Level 60 raid capstone (proof-of-concept)",
