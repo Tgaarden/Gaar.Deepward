@@ -443,9 +443,9 @@ local function RenderDetail(tier)
     local twoRows    = enterVisible and travelVisible   -- Advance is now a standalone top-right button, not a bottom-band row
     -- Bottom-band sits LOW in the beige strip under the splash: role cluster just below the art, Enter
     -- at the very bottom. (Lower Y = closer to the panel bottom.)
-    local roleBtnY   = twoRows and 78 or 44
-    local roleLabelY = roleBtnY + 48   -- label sits clear ABOVE the role icons (they're ~40px tall)
-    local selectorY  = roleBtnY + 80   -- dungeon selectors above the label/icon cluster
+    local roleBtnY   = twoRows and 84 or 56   -- lifted a touch for more air above Enter and below the label
+    local roleLabelY = roleBtnY + 52   -- label sits clear ABOVE the role icons (they're ~40px tall)
+    local selectorY  = roleBtnY + 84   -- dungeon selectors above the label/icon cluster
 
     frame.detailTitle:SetText(sel and ("Tier %d — %s"):format(tier.id, sel.name) or ("Tier %d — %s"):format(tier.id, tier.name))
 
@@ -540,7 +540,7 @@ local function RenderDetail(tier)
         frame.roleLabel:SetPoint("BOTTOM", frame.rightPanel, "BOTTOM", 0, roleLabelY)
         for i, rb in ipairs(frame.roleButtons) do
             rb:ClearAllPoints()
-            rb:SetPoint("BOTTOM", frame.rightPanel, "BOTTOM", (i - 2) * 54, roleBtnY)
+            rb:SetPoint("BOTTOM", frame.rightPanel, "BOTTOM", (i - 2) * 68, roleBtnY)   -- wider gap between icons
             rb:Show()
         end
     else
@@ -949,7 +949,7 @@ local function CreateUI()
     local isz = 40
     for i, r in ipairs(roleOrder) do
         local rb = MakeRoleIcon(right, r, isz)
-        rb:SetPoint("BOTTOM", right, "BOTTOM", (i - 2) * 54, 92)
+        rb:SetPoint("BOTTOM", right, "BOTTOM", (i - 2) * 68, 92)   -- placeholder; RenderDetail repositions
         rb:SetScript("OnClick", function()
             DeepwardTiersDB.role = rb.role
             UpdateRoleButtons()
