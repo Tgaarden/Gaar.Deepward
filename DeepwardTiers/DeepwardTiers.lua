@@ -238,15 +238,16 @@ local selectedId = 1
 local selectedDungeonIdx = 1   -- which dungeon of the selected tier is shown (bg + info + Enter target)
 
 -- Bot-comp editor + live roster (idea #6). Forward-declared so CreateUI's button closures can call them.
--- Standard WotLK LFG role icons (Interface\LFGFrame\UI-LFG-ICON-ROLES), shared by the panel role
--- selector, the bot-comp steppers, and the role-check popup — used instead of text/letters.
-local ROLE_TEX = "Interface\\LFGFrame\\UI-LFG-ICON-ROLES"
--- Hand-tuned crop windows (shifted right + down to centre each icon in its cell; tank/dps shifted
--- equally and more than healer).
+-- Custom Deepward role medallions (wow-roles.blp in this addon, 256x256): DPS = red sword (top-left),
+-- Healer = green cross (top-right), Tank = blue shield (bottom-centre). Shared by the panel role selector,
+-- the bot-comp steppers, and the role-check popup. (Converted from wow-roles.png to a palettized BLP2 with
+-- mipmaps so the 3.3.5 client loads it — a mip-less BLP renders green.)
+local ROLE_TEX = "Interface\\AddOns\\DeepwardTiers\\wow-roles"
+-- Crop windows {left, right, top, bottom} isolating each medallion in the 256x256 sheet.
 local ROLE_COORDS = {
-    tank   = { 0.062, 0.335,    0.406,    0.679    },
-    healer = { 0.344, 0.617,    0.058,    0.330    },
-    dps    = { 0.374, 0.647,    0.406,    0.679    },
+    dps    = { 0.023, 0.461, 0.023, 0.461 },   -- red sword, top-left
+    healer = { 0.539, 0.977, 0.023, 0.461 },   -- green cross, top-right
+    tank   = { 0.281, 0.719, 0.500, 0.938 },   -- blue shield, bottom-centre
 }
 local ROLE_LABEL = { tank = "Tank", healer = "Healer", dps = "DPS" }
 -- Boss-status inline icons for the detail list (killed = green check, still up = skull).
@@ -710,6 +711,7 @@ local function CreateUI()
 
     frame = CreateFrame("Frame", "DeepwardTiersFrame", UIParent)
     frame:SetSize(880, 680)
+    frame:SetScale(1.12)   -- scale the whole panel up a touch for more breathing room
     frame:SetPoint("CENTER")
     frame:SetFrameStrata("HIGH")
     frame:SetBackdrop({
@@ -737,6 +739,11 @@ local function CreateUI()
     frame.bgParch:SetTexture("Interface\\FrameGeneral\\UI-Background-Marble")   -- stone, tinted blue (titan/Ulduar theme)
     frame.bgParch:SetTexCoord(0, 1, 0, 1)
     frame.bgParch:SetVertexColor(0.42, 0.55, 0.78)   -- blue stone
+    -- Solid OPAQUE fill UNDER the marble so nothing shows through the window (less see-through per request).
+    frame.bgSolid = frame:CreateTexture(nil, "BACKGROUND", nil, -9)
+    frame.bgSolid:SetPoint("TOPLEFT", 6, -6)
+    frame.bgSolid:SetPoint("BOTTOMRIGHT", -6, 6)
+    frame.bgSolid:SetTexture(0.05, 0.07, 0.13, 1)   -- 3.3.5 solid-colour SetTexture(r,g,b,a): opaque dark blue
 
     local title = frame:CreateFontString(nil, "ARTWORK", "GameFontNormalHuge")
     title:SetPoint("TOP", 0, -20)
