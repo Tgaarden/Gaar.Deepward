@@ -973,24 +973,16 @@ local function CreateUI()
         frame:Hide()
     end)
 
-    -- Advance button: the explicit "rykke opp" choice. Sends ".advance"; the SERVER gates it on
-    -- having cleared every dungeon of the current tier (rejects with a message if not qualified),
-    -- so it's safe to always offer. Hidden while inside an instance (you advance from the hub).
+    -- Ascend reminder: advancement is a PERMANENT, confirmed choice made at the Deepward Herald in
+    -- Dalaran (native point-of-no-return popup + Gaar-Token carry-cap warning) — NOT from the panel.
+    -- This button no longer advances; it just points you to the Herald. Shown when you're eligible.
     frame.advanceBtn = CreateFrame("Button", nil, right, "UIPanelButtonTemplate")
-    frame.advanceBtn:SetSize(150, 30)
+    frame.advanceBtn:SetSize(160, 30)
     frame.advanceBtn:SetPoint("TOPRIGHT", right, "TOPRIGHT", -10, -12)   -- standalone top-right button (toggled in RenderDetail)
     frame.advanceBtn:SetFrameLevel(right:GetFrameLevel() + 10)          -- sit above the splash art
-    frame.advanceBtn:SetText("Advance Tier")
+    frame.advanceBtn:SetText("Ascend at the Herald")
     frame.advanceBtn:SetScript("OnClick", function()
-        SendCmd(".advance")
-        frame:Hide()
-        -- Give the server a beat to apply .advance, then reload the UI so the panel (current-tier
-        -- marker, granted quests, gating) reflects the new tier. 3.3.5 has no C_Timer, so poll OnUpdate.
-        local t, waiter = 0, CreateFrame("Frame")
-        waiter:SetScript("OnUpdate", function(self, elapsed)
-            t = t + elapsed
-            if t >= 1.5 then self:SetScript("OnUpdate", nil); ReloadUI() end
-        end)
+        print("|cff33ff99Deepward:|r Rykk opp hos the Deepward Herald i Dalaran — opprykk er permanent, so det bekreftes der (og GT over taket mistes, bruk dem forst).")
     end)
 
     -- Travel button: move (up or down) to another tier you've already reached. Sends ".movetier N";
