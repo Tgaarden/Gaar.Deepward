@@ -190,7 +190,56 @@ local TIERS = {
             },
         },
     },
-    -- Tiers 8 (Farm) + 9 (Raid) come later. Tier 66 below is the current Molten Core capstone.
+    -- Tier 8 — the level-58 FARM tier: the six great level-60 dungeons. Clear 4 of 6, repeatable.
+    {
+        id = 8, name = "BRD / LBRS / UBRS / Scholomance / Stratholme / Dire Maul", level = 58, wipeBudget = 3,
+        gear = "Earned from drops + Sylvanas caches",
+        dungeons = {
+            {
+                name = "Blackrock Depths", cleared = false, map = 230,
+                art = "Interface\\Glues\\LoadingScreens\\LoadScreenBlackrockDepths",
+                loc = "Blackrock Mountain", range = "52–60",
+                desc = "The Dark Iron dwarf city deep in Blackrock Mountain — Emperor Dagran Thaurissan's seat.",
+                bosses = { {n="High Interrogator Gerstahn",e=9018}, {n="Magmus",e=9938}, {n="Emperor Dagran Thaurissan",e=9019} },
+            },
+            {
+                name = "Lower Blackrock Spire", cleared = false, map = 229,
+                art = "Interface\\Glues\\LoadingScreens\\LoadScreenBlackRockSpire",
+                loc = "Blackrock Spire", range = "55–60",
+                desc = "The orc warrens of the Spinemaw, held by Overlord Wyrmthalak.",
+                bosses = { {n="Highlord Omokk",e=9196}, {n="Shadow Hunter Vosh'gajin",e=9236}, {n="War Master Voone",e=9237}, {n="Overlord Wyrmthalak",e=9568} },
+            },
+            {
+                name = "Upper Blackrock Spire", cleared = false, map = 229,
+                art = "Interface\\Glues\\LoadingScreens\\LoadScreenBlackRockSpire",
+                loc = "Blackrock Spire", range = "55–60",
+                desc = "Nefarian's black dragonspawn stronghold atop the Spire — General Drakkisath commands.",
+                bosses = { {n="Pyroguard Emberseer",e=9816}, {n="The Beast",e=10430}, {n="General Drakkisath",e=10363} },
+            },
+            {
+                name = "Scholomance", cleared = false, map = 289,
+                art = "Interface\\Glues\\LoadingScreens\\LoadScreenScholomance",
+                loc = "Western Plaguelands", range = "56–60",
+                desc = "The necromantic academy beneath Caer Darrow, run by Darkmaster Gandling.",
+                bosses = { {n="Jandice Barov",e=10503}, {n="Ras Frostwhisper",e=10508}, {n="Rattlegore",e=11622}, {n="Darkmaster Gandling",e=1853} },
+            },
+            {
+                name = "Stratholme", cleared = false, map = 329,
+                art = "Interface\\Glues\\LoadingScreens\\LoadScreenStratholme",
+                loc = "Eastern Plaguelands", range = "56–60",
+                desc = "The plagued city — the Scourge's Baron Rivendare holds the undead side.",
+                bosses = { {n="Magistrate Barthilas",e=10435}, {n="Nerub'enkan",e=10437}, {n="Maleki the Pallid",e=10438}, {n="Baroness Anastari",e=10436}, {n="Baron Rivendare",e=10440} },
+            },
+            {
+                name = "Dire Maul", cleared = false, map = 429,
+                art = "Interface\\Glues\\LoadingScreens\\LoadScreenDireMaul",
+                loc = "Feralas", range = "55–60",
+                desc = "The ruined Highborne city in Feralas — the ogre King Gordok rules the north.",
+                bosses = { {n="Captain Kromcrush",e=14325}, {n="King Gordok",e=11501} },
+            },
+        },
+    },
+    -- Tier 9 (Raid) comes later. Tier 66 below is the current Molten Core capstone.
     {
         id = 66, name = "Molten Core", level = 60, wipeBudget = 3,
         gear = "Level 60 raid capstone (proof-of-concept)",
