@@ -371,16 +371,27 @@ local function IsBossKilled(b)
     return DeepwardLive and DeepwardLive.killed and b and DeepwardLive.killed[b.e] or false
 end
 
--- A tier is cleared (qualified to advance) when every one of its dungeons is cleared. Needs live
--- data; without it we return false so the Advance button stays hidden until we actually know.
+-- Required clears per tier (N of M instances). Mirrors the server's tier.required_clears.
+local TIER_REQ = { [1]=1, [2]=1, [3]=1, [4]=2, [5]=1, [6]=1, [7]=2, [8]=4, [66]=1 }
+local function TierReq(t) return (t and TIER_REQ[t.id]) or (t and t.dungeons and #t.dungeons) or 1 end
+
+-- How many of a tier's dungeons this char has cleared (live data).
+local function CountClearedDungeons(t)
+    if not (DeepwardLive and DeepwardLive.cleared) or not t or not t.dungeons then return 0 end
+    local n = 0
+    for _, d in ipairs(t.dungeons) do
+        if DeepwardLive.cleared[d.map] then n = n + 1 end
+    end
+    return n
+end
+
+-- A tier is cleared (qualified to advance) when the char has cleared at least the REQUIRED number of
+-- its dungeons (N of M). Needs live data; without it we return false so Advance stays hidden.
 local function IsTierClearedLive(t)
     if not (DeepwardLive and DeepwardLive.cleared) or not t or not t.dungeons or #t.dungeons == 0 then
         return false
     end
-    for _, d in ipairs(t.dungeons) do
-        if not DeepwardLive.cleared[d.map] then return false end
-    end
-    return true
+    return CountClearedDungeons(t) >= TierReq(t)
 end
 
 -- ---------------------------------------------------------------------------
@@ -392,16 +403,13 @@ local selectedId = 1
 local selectedDungeonIdx = 1   -- which dungeon of the selected tier is shown (bg + info + Enter target)
 
 -- Bot-comp editor + live roster (idea #6). Forward-declared so CreateUI's button closures can call them.
--- Custom Deepward role medallions (wow-roles.blp in this addon, 256x256): DPS = red sword (top-left),
--- Healer = green cross (top-right), Tank = blue shield (bottom-centre). Shared by the panel role selector,
--- the bot-comp steppers, and the role-check popup. (Converted from wow-roles.png to a DXT5-compressed BLP2
--- with a full mipmap chain — the palettized BLP2 rendered green in the 3.3.5 client, DXT5 loads correctly.)
-local ROLE_TEX = "Interface\\AddOns\\DeepwardTiers\\wow-roles"
--- Crop windows {left, right, top, bottom} isolating each medallion in the 256x256 sheet.
-local ROLE_COORDS = {
-    dps    = { 0.023, 0.461, 0.023, 0.461 },   -- red sword, top-left
-    healer = { 0.539, 0.977, 0.023, 0.461 },   -- green cross, top-right
-    tank   = { 0.281, 0.719, 0.500, 0.938 },   -- blue shield, bottom-centre
+-- Custom Deepward role medallions: three separate icons shipped with the addon (pre-cropped by Thomas,
+-- converted to power-of-two 32-bit TGA). One texture per role — no atlas / TexCoord carving. Shared by
+-- the panel role selector, the bot-comp steppers, and the role-check popup.
+local ROLE_TEX = {
+    dps    = "Interface\\AddOns\\DeepwardTiers\\DPS-role",
+    healer = "Interface\\AddOns\\DeepwardTiers\\Healer-role",
+    tank   = "Interface\\AddOns\\DeepwardTiers\\Tank-role",
 }
 local ROLE_LABEL = { tank = "Tank", healer = "Healer", dps = "DPS" }
 -- Boss-status inline icons for the detail list (killed = green check, still up = skull).
@@ -419,9 +427,7 @@ local ROLE_INLINE = {
 local function MakeRoleIcon(parent, role, size)
     local btn = CreateFrame("Button", nil, parent)
     btn:SetSize(size, size)
-    local c = ROLE_COORDS[role]
-    btn:SetNormalTexture(ROLE_TEX)
-    btn:GetNormalTexture():SetTexCoord(c[1], c[2], c[3], c[4])
+    btn:SetNormalTexture(ROLE_TEX[role])
     btn:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square")
     btn:GetHighlightTexture():SetBlendMode("ADD")
     btn.role = role
@@ -597,9 +603,8 @@ local function RenderDetail(tier)
     local twoRows    = enterVisible and travelVisible   -- Advance is now a standalone top-right button, not a bottom-band row
     -- Bottom-band sits LOW in the beige strip under the splash: role cluster just below the art, Enter
     -- at the very bottom. (Lower Y = closer to the panel bottom.)
-    local roleBtnY   = twoRows and 84 or 56   -- lifted a touch for more air above Enter and below the label
-    local roleLabelY = roleBtnY + 52   -- label sits clear ABOVE the role icons (they're ~40px tall)
-    local selectorY  = roleBtnY + 84   -- dungeon selectors above the label/icon cluster
+    local roleBtnY   = twoRows and 78 or 48   -- role cluster sits low (instance selectors moved to the top now)
+    local roleLabelY = roleBtnY + 46   -- "Your role:" sits clear ABOVE the role icons (they're ~40px tall)
 
     frame.detailTitle:SetText(sel and ("Tier %d — %s"):format(tier.id, sel.name) or ("Tier %d — %s"):format(tier.id, tier.name))
 
@@ -666,13 +671,20 @@ local function RenderDetail(tier)
     -- Enter button). Clicking one swaps the background + info to that dungeon; on your current tier
     -- the Enter button then targets whatever is selected. Sit right above the role row.
     local showSelectors = (#dgs > 1)
+    -- Instance selectors flow as a wrapping row across the TOP of the info panel, right under the
+    -- header's blue line (2 per row, left->right). Browse/preview any dungeon; entering is still gated
+    -- to your current tier via the Enter button.
+    local BTN_W, BTN_H, GAP, PER_ROW = 292, 24, 6, 2
     local n = showSelectors and math.min(#dgs, #frame.dungeonBtns) or 0
     for i, db in ipairs(frame.dungeonBtns) do
         local d = dgs[i]
         if d and i <= n then
+            local col = (i - 1) % PER_ROW
+            local row = math.floor((i - 1) / PER_ROW)
             db:SetText(d.name)
+            db:SetSize(BTN_W, BTN_H)
             db:ClearAllPoints()
-            db:SetPoint("BOTTOM", frame.rightPanel, "BOTTOM", (i - (n + 1) / 2) * 216, selectorY)
+            db:SetPoint("TOPLEFT", frame.rightPanel, "TOPLEFT", 14 + col * (BTN_W + GAP), -6 - row * (BTN_H + GAP))
             if i == selectedDungeonIdx then db:LockHighlight() else db:UnlockHighlight() end
             db:SetScript("OnClick", function()
                 selectedDungeonIdx = i
@@ -1002,9 +1014,7 @@ local function CreateUI()
         local lbl = left:CreateTexture(nil, "ARTWORK")
         lbl:SetSize(18, 18)
         lbl:SetPoint("TOPLEFT", frame.autoBtn, "BOTTOMLEFT", 2, rowY)
-        local rc = ROLE_COORDS[def.role]
-        lbl:SetTexture(ROLE_TEX)
-        lbl:SetTexCoord(rc[1], rc[2], rc[3], rc[4])
+        lbl:SetTexture(ROLE_TEX[def.role])
         local minus = CreateFrame("Button", nil, left)
         minus:SetSize(24, 24)
         minus:SetPoint("LEFT", lbl, "RIGHT", 8, 0)
