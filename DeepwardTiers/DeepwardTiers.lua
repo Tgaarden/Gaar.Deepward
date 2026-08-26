@@ -240,8 +240,8 @@ local selectedDungeonIdx = 1   -- which dungeon of the selected tier is shown (b
 -- Bot-comp editor + live roster (idea #6). Forward-declared so CreateUI's button closures can call them.
 -- Custom Deepward role medallions (wow-roles.blp in this addon, 256x256): DPS = red sword (top-left),
 -- Healer = green cross (top-right), Tank = blue shield (bottom-centre). Shared by the panel role selector,
--- the bot-comp steppers, and the role-check popup. (Converted from wow-roles.png to a palettized BLP2 with
--- mipmaps so the 3.3.5 client loads it — a mip-less BLP renders green.)
+-- the bot-comp steppers, and the role-check popup. (Converted from wow-roles.png to a DXT5-compressed BLP2
+-- with a full mipmap chain — the palettized BLP2 rendered green in the 3.3.5 client, DXT5 loads correctly.)
 local ROLE_TEX = "Interface\\AddOns\\DeepwardTiers\\wow-roles"
 -- Crop windows {left, right, top, bottom} isolating each medallion in the 256x256 sheet.
 local ROLE_COORDS = {
@@ -351,7 +351,8 @@ local function SetTierLabel(b)
     local cur = CurrentTierId()
     local tag
     if b.tierId == cur then
-        tag = " |cff40ff40(current)|r"
+        -- current tier: a bright yellow raid-target star marker (no "(current)" text per request)
+        tag = "  |TInterface\\TargetingFrame\\UI-RaidTargetingIcons:20:20:0:0:256:256:0:64:0:64|t"
     elseif b.tierId < cur then
         tag = "  |TInterface\\RaidFrame\\ReadyCheck-Ready:18:18:0:0|t"   -- completed
     else
@@ -613,7 +614,7 @@ local function BuildTierList(parent)
     for i = #TIERS, 1, -1 do
         local t = TIERS[i]
         local b = CreateFrame("Button", nil, parent)
-        b:SetSize(196, TIER_BTN_H - 4)
+        b:SetSize(172, TIER_BTN_H - 4)
         if prev then
             b:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -4)
         else
@@ -779,7 +780,7 @@ local function CreateUI()
     -- scroll frame so a long tier list (up to 29) scrolls instead of overflowing.
     local left = CreateFrame("Frame", nil, frame)
     left:SetPoint("TOPLEFT", 24, -100)
-    left:SetSize(236, 548)
+    left:SetSize(210, 548)   -- narrower menu column so the right info panel gets more room
     left:SetBackdrop({
         edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
         edgeSize = 14,
@@ -797,7 +798,7 @@ local function CreateUI()
     tierScroll:SetPoint("TOPLEFT", 10, -10)
     tierScroll:SetPoint("BOTTOMRIGHT", -28, 208)   -- leave the lower part of the column for group/comp
     local tierChild = CreateFrame("Frame", nil, tierScroll)
-    tierChild:SetSize(196, 10)
+    tierChild:SetSize(172, 10)
     tierScroll:SetScrollChild(tierChild)
     BuildTierList(tierChild)
 
@@ -821,7 +822,7 @@ local function CreateUI()
 
     frame.rosterText = left:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     frame.rosterText:SetPoint("TOPLEFT", gHeader, "BOTTOMLEFT", 2, -4)
-    frame.rosterText:SetWidth(196)
+    frame.rosterText:SetWidth(172)
     frame.rosterText:SetJustifyH("LEFT")
     frame.rosterText:SetJustifyV("TOP")
     frame.rosterText:SetText("|cffa0a0a0(just you)|r")
@@ -881,7 +882,7 @@ local function CreateUI()
     -- the client.) Layers: art (BACKGROUND) < dark overlay (ARTWORK) < text (OVERLAY).
     local right = CreateFrame("Frame", nil, frame)
     right:SetPoint("TOPLEFT", left, "TOPRIGHT", 12, 0)
-    right:SetSize(572, 548)
+    right:SetSize(612, 548)   -- wider info panel (gained from the narrower left column)
 
     frame.artBg = right:CreateTexture(nil, "BACKGROUND")
     frame.artBg:SetAllPoints()
@@ -912,15 +913,15 @@ local function CreateUI()
     -- so long descriptions scroll within the beige field instead of spilling over the buttons.
     local bodyScroll = CreateFrame("ScrollFrame", "DeepwardTiersBodyScroll", right, "UIPanelScrollFrameTemplate")
     bodyScroll:SetPoint("TOPLEFT", 18, -170)           -- top sits below the title + STATUS badge (avoids overlapping Level)
-    bodyScroll:SetPoint("BOTTOMRIGHT", -30, 138)       -- extends lower now the buttons sit lower (taller text area)
+    bodyScroll:SetPoint("BOTTOMRIGHT", -30, 176)       -- ends ABOVE the instance-selector row (~124-152) so boss text never lies under the buttons
     local bodyChild = CreateFrame("Frame", nil, bodyScroll)
-    bodyChild:SetSize(516, 10)
+    bodyChild:SetSize(556, 10)
     bodyScroll:SetScrollChild(bodyChild)
     frame.bodyChild = bodyChild
 
     frame.detailBody = bodyChild:CreateFontString(nil, "OVERLAY", "GameFontHighlightLeft")
     frame.detailBody:SetPoint("TOPLEFT", 0, 0)
-    frame.detailBody:SetWidth(516)                      -- fixed width → wraps; height drives the scroll range
+    frame.detailBody:SetWidth(556)                      -- fixed width → wraps; height drives the scroll range
     frame.detailBody:SetFont("Fonts\\FRIZQT__.TTF", 18) -- larger, easier to read
     frame.detailBody:SetSpacing(3)
     frame.detailBody:SetJustifyH("LEFT")
