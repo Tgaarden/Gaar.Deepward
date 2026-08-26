@@ -440,7 +440,7 @@ local function MakeRoleIcon(parent, role, size)
     return btn
 end
 
-local RenderComp, RenderRoster, UpdateBadge
+local RenderComp, RenderRoster, UpdateBadge, UpdateJourney
 
 -- Header badge (achievement-frame style): total bosses slain, from the live "B=" set.
 UpdateBadge = function()
@@ -448,6 +448,21 @@ UpdateBadge = function()
     local n = 0
     if DeepwardLive and DeepwardLive.killed then for _ in pairs(DeepwardLive.killed) do n = n + 1 end end
     frame.badge:SetText(("%d"):format(n))
+end
+
+-- Left-column "Din reise" summary: this character's running totals, refreshed with every live push.
+UpdateJourney = function()
+    if not frame or not frame.journeyText then return end
+    local kills, insts = 0, 0
+    local curT = CurrentTierId()
+    local maxT = (DeepwardLive and DeepwardLive.max) or curT
+    if DeepwardLive then
+        if DeepwardLive.killed  then for _ in pairs(DeepwardLive.killed)  do kills = kills + 1 end end
+        if DeepwardLive.cleared then for _ in pairs(DeepwardLive.cleared) do insts = insts + 1 end end
+    end
+    frame.journeyText:SetText(
+        ("|cffffd100Tier:|r %d\n|cffffd100Level:|r %d\n\n|cffffd100Bosser drept:|r %d\n|cffffd100Instanser klart:|r %d\n\n|cffffd100Høyeste tier n\xc3\xa5dd:|r %d")
+        :format(curT, UnitLevel("player"), kills, insts, maxT))
 end
 
 -- Bump a role count in the chosen bot comp, clamped to [0, free slots] (total can't exceed the slots
@@ -627,6 +642,12 @@ local function RenderDetail(tier)
     -- The panel now shows ONE dungeon at a time (the selected one) — background + info both follow
     -- the selection, and the Enter button targets it.
     local lines = {}
+    -- Overall tier progress: how many of this tier's instances are cleared vs the requirement to ascend.
+    do
+        local clearedN, reqN = CountClearedDungeons(tier), TierReq(tier)
+        local col = (clearedN >= reqN) and "cff40ff40" or "cffffd100"
+        table.insert(lines, ("|cffffd100Instanser klart:|r |%s%d / %d|r  |cff808080(krav %d for opprykk)|r"):format(col, clearedN, #tier.dungeons, reqN))
+    end
     table.insert(lines, ("|cffffd100Level:|r %d"):format(tier.level))   -- wipe budget removed (no wipe penalty in the living-instance model)
     table.insert(lines, ("|cffffd100Gear:|r %s"):format(tier.gear))
     table.insert(lines, " ")
@@ -772,19 +793,18 @@ local function SelectTier(id)
     end
 end
 
-local TIER_BTN_H = 46   -- per-row height (incl. the 4px gap) — drives the scroll-child height
+local TIER_BTN_W, TIER_BTN_H = 84, 30   -- horizontal tier bar: one pill per tier, flowing left->right
 local function BuildTierList(parent)
-    local cur = CurrentTierId()
     local prev
-    -- Highest tier ALWAYS on top: walk TIERS in reverse so Tier N sits above Tier N-1.
-    for i = #TIERS, 1, -1 do
+    -- Horizontal bar: Tier 1 leftmost, ascending to the right (like the website's tier selector).
+    for i = 1, #TIERS do
         local t = TIERS[i]
         local b = CreateFrame("Button", nil, parent)
-        b:SetSize(172, TIER_BTN_H - 4)
+        b:SetSize(TIER_BTN_W, TIER_BTN_H)
         if prev then
-            b:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -4)
+            b:SetPoint("LEFT", prev, "RIGHT", 4, 0)
         else
-            b:SetPoint("TOPLEFT", 0, 0)
+            b:SetPoint("LEFT", 0, 0)
         end
         b.tierId = t.id
 
@@ -794,10 +814,10 @@ local function BuildTierList(parent)
         b.bg:SetTexture(0.6, 0.5, 0.2, 0.45)
         b.bg:Hide()
 
-        local label = b:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
-        label:SetPoint("LEFT", 10, 0)
+        local label = b:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+        label:SetPoint("CENTER", 0, 0)
         b.label = label
-        SetTierLabel(b)   -- "(current)" or a completed checkmark, per live tier
+        SetTierLabel(b)   -- "Tier N" + current-star / cleared-check, per live tier
 
         b:SetScript("OnClick", function() SelectTier(t.id) end)
         b:SetScript("OnEnter", function() b.bg:Show() end)
@@ -806,8 +826,6 @@ local function BuildTierList(parent)
         table.insert(tierButtons, b)
         prev = b
     end
-    -- Size the scroll child to hold every row so the scrollbar engages when the list runs long.
-    parent:SetHeight(#TIERS * TIER_BTN_H + 8)
 end
 
 -- Custom role-check popup (idea #6, safe variant). The leader fires .dwrolecheck -> the server relays an
@@ -941,12 +959,18 @@ local function CreateUI()
     hdiv:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -20, -92)
     hdiv:SetTexture(0.35, 0.62, 0.95, 0.9)   -- blue divider (titan theme)
 
-    -- Left: tier ("category") list. It has no art, so it gets the quest-log parchment as its
-    -- background (+ a border) so the whole column reads as a solid beige field. The rows live in a
-    -- scroll frame so a long tier list (up to 29) scrolls instead of overflowing.
+    -- Horizontal tier bar across the top (like the website's tier selector): Tier 1..N left->right,
+    -- just under the header's blue divider. Replaces the old vertical tier list in the left column.
+    local tierBar = CreateFrame("Frame", nil, frame)
+    tierBar:SetPoint("TOPLEFT", 24, -98)
+    tierBar:SetSize(832, TIER_BTN_H)
+    BuildTierList(tierBar)
+
+    -- Left column: this character's JOURNEY summary on top, Group + bot settings below (kept in place).
+    -- Sits under the tier bar. Parchment/stone fill + border so it reads as a solid field.
     local left = CreateFrame("Frame", nil, frame)
-    left:SetPoint("TOPLEFT", 24, -100)
-    left:SetSize(210, 548)   -- narrower menu column so the right info panel gets more room
+    left:SetPoint("TOPLEFT", 24, -138)
+    left:SetSize(210, 510)
     left:SetBackdrop({
         edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
         edgeSize = 14,
@@ -960,19 +984,22 @@ local function CreateUI()
     left.parch:SetTexCoord(0, 1, 0, 1)
     left.parch:SetVertexColor(0.42, 0.55, 0.78)   -- blue stone, matches the main background
 
-    local tierScroll = CreateFrame("ScrollFrame", "DeepwardTiersTierScroll", left, "UIPanelScrollFrameTemplate")
-    tierScroll:SetPoint("TOPLEFT", 10, -10)
-    tierScroll:SetPoint("BOTTOMRIGHT", -28, 208)   -- leave the lower part of the column for group/comp
-    local tierChild = CreateFrame("Frame", nil, tierScroll)
-    tierChild:SetSize(172, 10)
-    tierScroll:SetScrollChild(tierChild)
-    BuildTierList(tierChild)
+    -- Char journey summary (top of the left column). Filled live by UpdateJourney().
+    local jHeader = left:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
+    jHeader:SetPoint("TOPLEFT", 12, -12)
+    jHeader:SetText("|cffffd100Din reise|r")
+    frame.journeyText = left:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+    frame.journeyText:SetPoint("TOPLEFT", jHeader, "BOTTOMLEFT", 0, -10)
+    frame.journeyText:SetWidth(184)
+    frame.journeyText:SetJustifyH("LEFT")
+    frame.journeyText:SetJustifyV("TOP")
+    frame.journeyText:SetText("")
 
     -- Bottom of the left column: live group roster + bot-comp editor (idea #6). A thin divider on top.
     local gdiv = left:CreateTexture(nil, "ARTWORK")
     gdiv:SetHeight(2)
-    gdiv:SetPoint("TOPLEFT", tierScroll, "BOTTOMLEFT", 0, -2)
-    gdiv:SetPoint("TOPRIGHT", tierScroll, "BOTTOMRIGHT", 18, -2)
+    gdiv:SetPoint("TOPLEFT", left, "TOPLEFT", 10, -200)     -- fixed spot: Group + bot block stays low-left
+    gdiv:SetPoint("TOPRIGHT", left, "TOPRIGHT", -10, -200)
     gdiv:SetTexture(0.5, 0.4, 0.15, 0.7)
 
     local gHeader = left:CreateFontString(nil, "ARTWORK", "GameFontNormal")
@@ -1046,7 +1073,7 @@ local function CreateUI()
     -- the client.) Layers: art (BACKGROUND) < dark overlay (ARTWORK) < text (OVERLAY).
     local right = CreateFrame("Frame", nil, frame)
     right:SetPoint("TOPLEFT", left, "TOPRIGHT", 12, 0)
-    right:SetSize(612, 548)   -- wider info panel (gained from the narrower left column)
+    right:SetSize(612, 510)   -- matches the left column height (both sit under the top tier bar now)
 
     frame.artBg = right:CreateTexture(nil, "BACKGROUND")
     frame.artBg:SetAllPoints()
@@ -1170,6 +1197,7 @@ local function CreateUI()
     RenderComp()
     RenderRoster()
     UpdateBadge()
+    UpdateJourney()
 end
 
 local function Toggle()
@@ -1206,6 +1234,7 @@ liveFrame:SetScript("OnEvent", function(_, event, prefix, message)
         end
         ParseLive(message)
         if UpdateBadge then UpdateBadge() end
+        if UpdateJourney then UpdateJourney() end
         if frame and frame:IsShown() then
             SelectTier(selectedId or CurrentTierId())
         end
