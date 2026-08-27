@@ -742,10 +742,23 @@ local function RenderDetail(tier)
     -- current tier / in-instance; Travel needs a different reached tier), and Advance is current-tier
     -- only — so at most two buttons ever stack. (Visibility booleans computed at the top of RenderDetail.)
 
-    -- Advance is a standalone TOP-RIGHT button (anchored at creation); just toggle it here.
-    if advanceVisible then frame.advanceBtn:Show() else frame.advanceBtn:Hide() end
-    if frame.toLeaderBtn then   -- Go to leader: only while grouped
-        if (GetNumPartyMembers() or 0) > 0 or (GetNumRaidMembers() or 0) > 0 then frame.toLeaderBtn:Show() else frame.toLeaderBtn:Hide() end
+    -- Left-column action stack under the bot comp: top-down, left-aligned, equal size, and no gap for a
+    -- hidden button — Play with bots -> Go to group leader (grouped) -> Ascend at the Herald (eligible).
+    do
+        local grouped = (GetNumPartyMembers() or 0) > 0 or (GetNumRaidMembers() or 0) > 0
+        local prev, prevPt = frame.compRemain, "BOTTOMLEFT"
+        local function stackL(btn, shown)
+            if not btn then return end
+            if not shown then btn:Hide(); return end
+            btn:ClearAllPoints()
+            local yGap = (prev == frame.compRemain) and -10 or -6
+            btn:SetPoint("TOPLEFT", prev, prevPt, (prev == frame.compRemain) and -2 or 0, yGap)
+            btn:Show()
+            prev, prevPt = btn, "BOTTOMLEFT"
+        end
+        stackL(frame.enterBtn, onCurrent or IsInInstance())
+        stackL(frame.toLeaderBtn, grouped)
+        stackL(frame.advanceBtn, advanceVisible)
     end
 
     -- Resolve the single bottom-band secondary (Travel only now; Advance moved to the top-right).
@@ -771,9 +784,7 @@ local function RenderDetail(tier)
     if onCurrent and not IsInInstance() then
         placeAt(frame.playersBtn, 0, LOWER_Y)
     end
-    -- Play with bots lives in the LEFT column under the bot comp — just toggle it (don't re-anchor).
-    -- Shown on the current tier or while inside (where it reads "Hearthstone to Exit").
-    if onCurrent or IsInInstance() then frame.enterBtn:Show() else frame.enterBtn:Hide() end
+    -- (Play with bots / Go to leader / Ascend are stacked in the LEFT column above — see the stack block.)
     if secondary then
         placeAt(secondary, 0, PRIMARY_Y)
     end
@@ -1181,7 +1192,7 @@ local function CreateUI()
     -- Dalaran (native point-of-no-return popup + Gaar-Token carry-cap warning) — NOT from the panel.
     -- This button no longer advances; it just points you to the Herald. Shown when you're eligible.
     frame.advanceBtn = CreateFrame("Button", nil, left, "UIPanelButtonTemplate")
-    frame.advanceBtn:SetSize(190, 30)
+    frame.advanceBtn:SetSize(190, 28)
     frame.advanceBtn:SetPoint("BOTTOM", left, "BOTTOM", 0, 12)   -- bottom of the LEFT column, under the bot comp
     frame.advanceBtn:SetFrameLevel(left:GetFrameLevel() + 10)
     frame.advanceBtn:SetText("Ascend at the Herald")
@@ -1192,7 +1203,7 @@ local function CreateUI()
     -- Go to leader: safety net for a missed auto-pull — teleports you to the group leader (their instance
     -- or Dalaran). Sits just above Ascend in the left column; shown only while you're in a group.
     frame.toLeaderBtn = CreateFrame("Button", nil, left, "UIPanelButtonTemplate")
-    frame.toLeaderBtn:SetSize(190, 26)
+    frame.toLeaderBtn:SetSize(190, 28)
     frame.toLeaderBtn:SetPoint("BOTTOM", frame.advanceBtn, "TOP", 0, 6)
     frame.toLeaderBtn:SetFrameLevel(left:GetFrameLevel() + 10)
     frame.toLeaderBtn:SetText("Go to group leader")
