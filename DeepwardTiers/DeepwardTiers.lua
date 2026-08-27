@@ -772,6 +772,10 @@ local function RenderDetail(tier)
     elseif secondary then
         place(secondary, LOWER_Y)
     end
+    -- Play players (matchmaker) rides above Enter, only on your current tier and only outside an instance.
+    if frame.playersBtn then
+        frame.playersBtn:SetShown(onCurrent and not IsInInstance())
+    end
 end
 
 local function SelectTier(id)
@@ -1146,7 +1150,7 @@ local function CreateUI()
     frame.enterBtn = CreateFrame("Button", nil, right, "UIPanelButtonTemplate")
     frame.enterBtn:SetSize(232, 34)
     frame.enterBtn:SetPoint("BOTTOM", right, "BOTTOM", 0, 54)   -- centred; repositioned in RenderDetail
-    frame.enterBtn:SetText("Enter Dungeon")
+    frame.enterBtn:SetText("Play bots")
     frame.enterBtn:SetScript("OnClick", function()
         if IsInInstance() then
             print("|cff33ff99Deepward:|r Use your Hearthstone to leave — it is your only way out.")
@@ -1154,6 +1158,22 @@ local function CreateUI()
         end
         EnterDungeon(frame.selectedMap)   -- the currently selected dungeon (nil -> server auto-routes)
         frame:Hide()
+    end)
+
+    -- Play players: matchmaker. Queues you (solo) for the tier; matches 5 real players or bot-fills after
+    -- 60s. While queued the button becomes "Leave Queue" and shows the countdown. Fires .dwqueue.
+    frame.playersBtn = CreateFrame("Button", nil, right, "UIPanelButtonTemplate")
+    frame.playersBtn:SetSize(232, 26)
+    frame.playersBtn:SetPoint("BOTTOM", frame.enterBtn, "TOP", 0, 6)
+    frame.playersBtn:SetText("Play players")
+    frame.playersQueued = false
+    frame.playersBtn:SetScript("OnClick", function()
+        if IsInInstance() then return end
+        if frame.playersQueued then
+            SendCmd(".dwqueue leave")
+        else
+            SendCmd(".dwqueue random")   -- MVP: match anywhere in the tier (best odds), bot-fill after 60s
+        end
     end)
 
     -- Ascend reminder: advancement is a PERMANENT, confirmed choice made at the Deepward Herald in
@@ -1207,6 +1227,24 @@ local function Toggle()
     end
 end
 
+-- Matchmaker status from the server ("Q=..."). Toggles the Play players button into a live "Leave Queue"
+-- countdown, and resets it when the match forms / is cancelled. Global so the addon-message handler finds it.
+function UpdateQueueUI(state)
+    if not frame or not frame.playersBtn then return end
+    local left, have, need = state:match("^searching:(%d+):(%d+):(%d+)")
+    if left then
+        frame.playersQueued = true
+        frame.playersBtn:SetText(("Leave Queue — %ss (%s/%s)"):format(left, have, need))
+        frame.playersBtn:Show()
+    else
+        frame.playersQueued = false
+        frame.playersBtn:SetText("Play players")
+        if state == "matched" then
+            print("|cff33ff99Deepward:|r Match funnet — gruppa dannes, du sendes inn!")
+        end
+    end
+end
+
 -- Live updates from the server: re-parse and, if the panel is open, re-render the current view.
 local liveFrame = CreateFrame("Frame")
 liveFrame:RegisterEvent("CHAT_MSG_ADDON")
@@ -1218,6 +1256,11 @@ liveFrame:SetScript("OnEvent", function(_, event, prefix, message)
         local rc = message:match("RC=(.*)")
         if rc then                          -- leader started a role check -> pop the role picker
             ShowRoleCheckPopup(rc)
+            return
+        end
+        local q = message:match("Q=(.*)")
+        if q then                           -- matchmaker status ("Play players")
+            if UpdateQueueUI then UpdateQueueUI(q) end
             return
         end
         if ParseRoster(message) then       -- roster-only message ("G=...") -> just refresh the roster
