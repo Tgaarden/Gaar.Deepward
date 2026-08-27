@@ -774,7 +774,7 @@ local function RenderDetail(tier)
     end
     -- Play players (matchmaker) rides above Enter, only on your current tier and only outside an instance.
     if frame.playersBtn then
-        frame.playersBtn:SetShown(onCurrent and not IsInInstance())
+        if onCurrent and not IsInInstance() then frame.playersBtn:Show() else frame.playersBtn:Hide() end
     end
 end
 
