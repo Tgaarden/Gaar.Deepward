@@ -326,6 +326,7 @@ local function EnsureDB()
     DeepwardTiersDB = DeepwardTiersDB or {}
     if DeepwardTiersDB.role == nil then DeepwardTiersDB.role = "dps" end
     if DeepwardTiersDB.botAuto == nil then DeepwardTiersDB.botAuto = true end
+    if DeepwardTiersDB.fillBots == nil then DeepwardTiersDB.fillBots = true end
     if type(DeepwardTiersDB.botComp) ~= "table" then DeepwardTiersDB.botComp = { t = 1, h = 1, d = 2 } end
 end
 
@@ -552,6 +553,7 @@ end
 -- composes Tank + 3 DPS + Healer around this role.
 DeepwardTiersDB = DeepwardTiersDB or {}
 DeepwardTiersDB.role = DeepwardTiersDB.role or "dps"
+if DeepwardTiersDB.fillBots == nil then DeepwardTiersDB.fillBots = true end
 -- Bot composition (for the slots bots fill). Auto = server decides (1T/1H/rest DPS around the humans).
 if DeepwardTiersDB.botAuto == nil then DeepwardTiersDB.botAuto = true end
 DeepwardTiersDB.botComp = DeepwardTiersDB.botComp or { t = 1, h = 1, d = 2 }
@@ -742,23 +744,28 @@ local function RenderDetail(tier)
     -- current tier / in-instance; Travel needs a different reached tier), and Advance is current-tier
     -- only — so at most two buttons ever stack. (Visibility booleans computed at the top of RenderDetail.)
 
-    -- Left-column action stack under the bot comp: top-down, left-aligned, equal size, and no gap for a
-    -- hidden button — Play with bots -> Go to group leader (grouped) -> Ascend at the Herald (eligible).
+    -- Left-column action stack, horizontally CENTERED on the left panel and stacked BOTTOM-UP so the
+    -- desired visual order falls out (top->bottom: Play with bots -> Go to group leader -> Ascend at the
+    -- Herald). Bottom-anchored, so a hidden button leaves no gap. Equal size, centered.
     do
         local grouped = (GetNumPartyMembers() or 0) > 0 or (GetNumRaidMembers() or 0) > 0
-        local prev, prevPt = frame.compRemain, "BOTTOMLEFT"
-        local function stackL(btn, shown)
+        local prev = nil   -- lowest visible button so far (nil = anchor to panel bottom)
+        local function stackUp(btn, shown)
             if not btn then return end
             if not shown then btn:Hide(); return end
             btn:ClearAllPoints()
-            local yGap = (prev == frame.compRemain) and -10 or -6
-            btn:SetPoint("TOPLEFT", prev, prevPt, (prev == frame.compRemain) and -2 or 0, yGap)
+            if prev then
+                btn:SetPoint("BOTTOM", prev, "TOP", 0, 6)
+            else
+                btn:SetPoint("BOTTOM", frame.leftPanel, "BOTTOM", 0, 14)
+            end
             btn:Show()
-            prev, prevPt = btn, "BOTTOMLEFT"
+            prev = btn
         end
-        stackL(frame.enterBtn, onCurrent or IsInInstance())
-        stackL(frame.toLeaderBtn, grouped)
-        stackL(frame.advanceBtn, advanceVisible)
+        -- add lowest-first (Ascend at the bottom), so the on-screen order reads Play / Go to leader / Ascend
+        stackUp(frame.advanceBtn, advanceVisible)
+        stackUp(frame.toLeaderBtn, grouped)
+        stackUp(frame.enterBtn, onCurrent or IsInInstance())
     end
 
     -- Resolve the single bottom-band secondary (Travel only now; Advance moved to the top-right).
@@ -773,6 +780,7 @@ local function RenderDetail(tier)
     -- secondary centred on the line below.
     frame.travelBtn:Hide()
     frame.playersBtn:Hide()
+    if frame.fillBotsChk then frame.fillBotsChk:Hide() end
 
     local PRIMARY_Y, LOWER_Y = 52, 12
     local function placeAt(btn, x, y)
@@ -783,6 +791,13 @@ local function RenderDetail(tier)
     -- Find player group: centred alone in the right panel (current tier, outside an instance).
     if onCurrent and not IsInInstance() then
         placeAt(frame.playersBtn, 0, LOWER_Y)
+        -- Fill-with-bots checkbox on the same row, pinned to the panel's far-right edge.
+        if frame.fillBotsChk then
+            frame.fillBotsChk:ClearAllPoints()
+            frame.fillBotsChk:SetPoint("RIGHT", frame.rightPanel, "BOTTOMRIGHT", -14, LOWER_Y + 15)
+            frame.fillBotsChk:SetChecked(DeepwardTiersDB and DeepwardTiersDB.fillBots)
+            frame.fillBotsChk:Show()
+        end
     end
     -- (Play with bots / Go to leader / Ascend are stacked in the LEFT column above — see the stack block.)
     if secondary then
@@ -977,6 +992,7 @@ local function CreateUI()
     -- Left column: this character's JOURNEY summary on top, Group + bot settings below (kept in place).
     -- Sits under the tier bar. Parchment/stone fill + border so it reads as a solid field.
     local left = CreateFrame("Frame", nil, frame)
+    frame.leftPanel = left   -- referenced by RenderDetail to horizontally center the action-button stack
     left:SetPoint("TOPLEFT", 24, -138)
     left:SetSize(210, 510)
     left:SetBackdrop({
@@ -1184,8 +1200,25 @@ local function CreateUI()
         if frame.playersQueued then
             SendCmd(".dwqueue leave")
         else
-            SendCmd(".dwqueue random")   -- MVP: match anywhere in the tier (best odds), bot-fill after 60s
+            -- pass the Fill-with-bots choice: 1 = bot-fill at 60s, 0 = players-only (60s + 120s, no bots)
+            local fill = (DeepwardTiersDB and DeepwardTiersDB.fillBots) and 1 or 0
+            SendCmd(".dwqueue random " .. fill)
         end
+    end)
+
+    -- "Fill with bots" checkbox: sits on the SAME row as Find player group, pushed as far right as the
+    -- panel allows. Checked (default) -> empty slots fill with bots at the 60s timeout. Unchecked ->
+    -- a players-only search: chat says no group yet, keeps looking 120s more, then gives up (no bots).
+    frame.fillBotsChk = CreateFrame("CheckButton", nil, right, "UICheckButtonTemplate")
+    frame.fillBotsChk:SetSize(22, 22)
+    frame.fillBotsChk.text = frame.fillBotsChk:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    frame.fillBotsChk.text:SetPoint("RIGHT", frame.fillBotsChk, "LEFT", -4, 0)
+    frame.fillBotsChk.text:SetText("Fill with bots")
+    frame.fillBotsChk:SetScript("OnClick", function(self)
+        DeepwardTiersDB.fillBots = self:GetChecked() and true or false
+    end)
+    frame.fillBotsChk:SetScript("OnShow", function(self)
+        self:SetChecked(DeepwardTiersDB and DeepwardTiersDB.fillBots)
     end)
 
     -- Ascend reminder: advancement is a PERMANENT, confirmed choice made at the Deepward Herald in
@@ -1264,6 +1297,8 @@ function UpdateQueueUI(state)
         frame.playersBtn:SetText("Find player group")
         if state == "matched" then
             print("|cff33ff99Deepward:|r Match funnet — gruppa dannes, du sendes inn!")
+        elseif state == "failed" then
+            print("|cff33ff99Deepward:|r Fant ikke nok ekte spillere — ingen bot-gruppe ble laget. Prov igjen, eller huk av 'Fill with bots'.")
         end
     end
 end
