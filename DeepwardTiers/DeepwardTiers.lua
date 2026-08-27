@@ -571,7 +571,7 @@ local function UpdateEnterButton()
         frame.enterBtn:SetText("Hearthstone to Exit")
         frame.enterBtn:Disable()
     else
-        frame.enterBtn:SetText("Enter Dungeon")
+        frame.enterBtn:SetText("Play with bots")
         frame.enterBtn:Enable()
     end
 end
@@ -758,7 +758,6 @@ local function RenderDetail(tier)
 
     -- Hide Enter/Travel, then place whatever is visible: Enter centred (upper if a secondary follows),
     -- secondary centred on the line below.
-    frame.enterBtn:Hide()
     frame.travelBtn:Hide()
     frame.playersBtn:Hide()
 
@@ -768,13 +767,13 @@ local function RenderDetail(tier)
         btn:SetPoint("BOTTOM", frame.rightPanel, "BOTTOM", x, y)
         btn:Show()
     end
+    -- Find player group: centred alone in the right panel (current tier, outside an instance).
     if onCurrent and not IsInInstance() then
-        -- Current tier, outside an instance: the two run buttons sit SIDE BY SIDE on one row (equal size).
-        placeAt(frame.playersBtn, -95, LOWER_Y)   -- Find player group (left)
-        placeAt(frame.enterBtn,    95, LOWER_Y)   -- Play bot group (right)
-    elseif enterVisible then
-        placeAt(frame.enterBtn, 0, LOWER_Y)       -- in an instance (Hearthstone to Exit) — single centred
+        placeAt(frame.playersBtn, 0, LOWER_Y)
     end
+    -- Play with bots lives in the LEFT column under the bot comp — just toggle it (don't re-anchor).
+    -- Shown on the current tier or while inside (where it reads "Hearthstone to Exit").
+    if onCurrent or IsInInstance() then frame.enterBtn:Show() else frame.enterBtn:Hide() end
     if secondary then
         placeAt(secondary, 0, PRIMARY_Y)
     end
@@ -1149,10 +1148,11 @@ local function CreateUI()
 
     -- Enter button: fires the server-side ".enter" to teleport into the current tier's dungeon
     -- (or ".leave" when already inside). The server decides where + enforces the rules.
-    frame.enterBtn = CreateFrame("Button", nil, right, "UIPanelButtonTemplate")
-    frame.enterBtn:SetSize(180, 30)
-    frame.enterBtn:SetPoint("BOTTOM", right, "BOTTOM", 0, 54)   -- repositioned in RenderDetail (paired row)
-    frame.enterBtn:SetText("Play bot group")
+    frame.enterBtn = CreateFrame("Button", nil, left, "UIPanelButtonTemplate")
+    frame.enterBtn:SetSize(190, 28)
+    frame.enterBtn:SetPoint("TOPLEFT", frame.compRemain, "BOTTOMLEFT", -2, -10)   -- LEFT column, right under the bot comp
+    frame.enterBtn:SetFrameLevel(left:GetFrameLevel() + 10)
+    frame.enterBtn:SetText("Play with bots")
     frame.enterBtn:SetScript("OnClick", function()
         if IsInInstance() then
             print("|cff33ff99Deepward:|r Use your Hearthstone to leave — it is your only way out.")
