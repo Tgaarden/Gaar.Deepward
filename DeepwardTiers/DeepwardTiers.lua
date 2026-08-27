@@ -941,17 +941,8 @@ local function CreateUI()
     frame.summary = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlightLarge")
     frame.summary:SetPoint("TOP", title, "BOTTOM", 0, -8)
 
-    -- Header badge (achievement-frame style): a shield with the count of bosses slain, top-right of the title.
-    frame.badgeIcon = frame:CreateTexture(nil, "ARTWORK")
-    frame.badgeIcon:SetSize(30, 30)
-    frame.badgeIcon:SetPoint("RIGHT", title, "LEFT", -14, 0)
-    frame.badgeIcon:SetTexture("Interface\\Icons\\Achievement_Dungeon_UtgardePinnacle_75")
-    frame.badge = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    frame.badge:SetPoint("RIGHT", frame.badgeIcon, "LEFT", -4, 0)
-    frame.badge:SetText("0")
-    frame.badgeLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    frame.badgeLabel:SetPoint("TOP", frame.badgeIcon, "BOTTOM", 0, -1)
-    frame.badgeLabel:SetText("slain")
+    -- (Removed the "N slain" header badge per request — the bosses-slain count now lives in the
+    -- left-column "Din reise" summary instead. UpdateBadge() is a guarded no-op without frame.badge.)
 
     -- Gold divider under the header (achievements-frame banner separation).
     local hdiv = frame:CreateTexture(nil, "ARTWORK")
