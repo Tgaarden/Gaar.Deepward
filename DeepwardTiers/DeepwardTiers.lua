@@ -1241,10 +1241,12 @@ end
 -- countdown, and resets it when the match forms / is cancelled. Global so the addon-message handler finds it.
 function UpdateQueueUI(state)
     if not frame or not frame.playersBtn then return end
-    local left, have, need = state:match("^searching:(%d+):(%d+):(%d+)")
+    local left = state:match("^searching:(%d+)")
     if left then
         frame.playersQueued = true
-        frame.playersBtn:SetText(("Leave (%ss · %s/%s)"):format(left, have, need))
+        -- Show only the countdown, not the raw queue count: with role caps the number in the queue isn't
+        -- the number that fits one group (e.g. 5 tanks -> only 1 fits), so a "5/5" would be misleading.
+        frame.playersBtn:SetText(("Leave (%ss)"):format(left))
         frame.playersBtn:Show()
     else
         frame.playersQueued = false
