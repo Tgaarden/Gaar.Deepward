@@ -744,6 +744,9 @@ local function RenderDetail(tier)
 
     -- Advance is a standalone TOP-RIGHT button (anchored at creation); just toggle it here.
     if advanceVisible then frame.advanceBtn:Show() else frame.advanceBtn:Hide() end
+    if frame.toLeaderBtn then   -- Go to leader: only while grouped
+        if (GetNumPartyMembers() or 0) > 0 or (GetNumRaidMembers() or 0) > 0 then frame.toLeaderBtn:Show() else frame.toLeaderBtn:Hide() end
+    end
 
     -- Resolve the single bottom-band secondary (Travel only now; Advance moved to the top-right).
     local secondary = nil
@@ -1185,6 +1188,15 @@ local function CreateUI()
     frame.advanceBtn:SetScript("OnClick", function()
         print("|cff33ff99Deepward:|r Rykk opp hos the Deepward Herald i Dalaran — opprykk er permanent, so det bekreftes der (og GT over taket mistes, bruk dem forst).")
     end)
+
+    -- Go to leader: safety net for a missed auto-pull — teleports you to the group leader (their instance
+    -- or Dalaran). Sits just above Ascend in the left column; shown only while you're in a group.
+    frame.toLeaderBtn = CreateFrame("Button", nil, left, "UIPanelButtonTemplate")
+    frame.toLeaderBtn:SetSize(190, 26)
+    frame.toLeaderBtn:SetPoint("BOTTOM", frame.advanceBtn, "TOP", 0, 6)
+    frame.toLeaderBtn:SetFrameLevel(left:GetFrameLevel() + 10)
+    frame.toLeaderBtn:SetText("Go to group leader")
+    frame.toLeaderBtn:SetScript("OnClick", function() SendCmd(".dwtoleader") end)
 
     -- Travel button: move (up or down) to another tier you've already reached. Sends ".movetier N";
     -- the server swaps your per-tier loadout + gear and logs you out (log back in on that tier).
