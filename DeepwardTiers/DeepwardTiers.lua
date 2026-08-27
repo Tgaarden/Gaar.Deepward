@@ -461,7 +461,7 @@ UpdateJourney = function()
         if DeepwardLive.cleared then for _ in pairs(DeepwardLive.cleared) do insts = insts + 1 end end
     end
     frame.journeyText:SetText(
-        ("|cffffd100Tier:|r %d\n|cffffd100Level:|r %d\n\n|cffffd100Bosser drept:|r %d\n|cffffd100Instanser klart:|r %d\n\n|cffffd100Høyeste tier n\xc3\xa5dd:|r %d")
+        ("|cffffd100Tier:|r %d\n|cffffd100Level:|r %d\n\n|cffffd100Bosser drept:|r %d\n|cffffd100Instanser klart:|r %d\n\n|cffffd100Høyeste tier nådd:|r %d")
         :format(curT, UnitLevel("player"), kills, insts, maxT))
 end
 
@@ -533,7 +533,7 @@ local function SetTierLabel(b)
     else
         tag = ""
     end
-    b.label:SetText(("Tier %d%s"):format(b.tierId, tag))
+    b.label:SetText(("Tier %d%s"):format((b.tierId == 66) and 9 or b.tierId, tag))   -- 66 = the raid capstone, shown as Tier 9
 end
 
 local function RefreshTierLabels()
@@ -621,7 +621,8 @@ local function RenderDetail(tier)
     local roleBtnY   = twoRows and 78 or 48   -- role cluster sits low (instance selectors moved to the top now)
     local roleLabelY = roleBtnY + 46   -- "Your role:" sits clear ABOVE the role icons (they're ~40px tall)
 
-    frame.detailTitle:SetText(sel and ("Tier %d — %s"):format(tier.id, sel.name) or ("Tier %d — %s"):format(tier.id, tier.name))
+    local dispId = (tier.id == 66) and 9 or tier.id   -- 66 = the raid capstone, shown as Tier 9
+    frame.detailTitle:SetText(sel and ("Tier %d — %s"):format(dispId, sel.name) or ("Tier %d — %s"):format(dispId, tier.name))
 
     -- Clear-status badge (prominent, under the title).
     if frame.statusBadge then
@@ -1122,9 +1123,9 @@ local function CreateUI()
     -- RenderDetail; each sends ".enter <role> <map>" so you can pick a specific dungeon (incl. one
     -- you've already cleared, e.g. to run it again with a friend).
     frame.dungeonBtns = {}
-    for i = 1, 2 do
+    for i = 1, 6 do   -- up to 6 instances in a tier (tier 8); RenderDetail sizes + flows them at the top
         local db = CreateFrame("Button", nil, right, "UIPanelButtonTemplate")
-        db:SetSize(210, 28)
+        db:SetSize(292, 24)
         db:Hide()
         frame.dungeonBtns[i] = db
     end
@@ -1167,10 +1168,10 @@ local function CreateUI()
     -- Ascend reminder: advancement is a PERMANENT, confirmed choice made at the Deepward Herald in
     -- Dalaran (native point-of-no-return popup + Gaar-Token carry-cap warning) — NOT from the panel.
     -- This button no longer advances; it just points you to the Herald. Shown when you're eligible.
-    frame.advanceBtn = CreateFrame("Button", nil, right, "UIPanelButtonTemplate")
-    frame.advanceBtn:SetSize(160, 30)
-    frame.advanceBtn:SetPoint("TOPRIGHT", right, "TOPRIGHT", -10, -12)   -- standalone top-right button (toggled in RenderDetail)
-    frame.advanceBtn:SetFrameLevel(right:GetFrameLevel() + 10)          -- sit above the splash art
+    frame.advanceBtn = CreateFrame("Button", nil, left, "UIPanelButtonTemplate")
+    frame.advanceBtn:SetSize(190, 30)
+    frame.advanceBtn:SetPoint("BOTTOM", left, "BOTTOM", 0, 12)   -- bottom of the LEFT column, under the bot comp
+    frame.advanceBtn:SetFrameLevel(left:GetFrameLevel() + 10)
     frame.advanceBtn:SetText("Ascend at the Herald")
     frame.advanceBtn:SetScript("OnClick", function()
         print("|cff33ff99Deepward:|r Rykk opp hos the Deepward Herald i Dalaran — opprykk er permanent, so det bekreftes der (og GT over taket mistes, bruk dem forst).")
