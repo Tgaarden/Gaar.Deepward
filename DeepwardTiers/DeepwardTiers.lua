@@ -757,24 +757,23 @@ local function RenderDetail(tier)
     -- secondary centred on the line below.
     frame.enterBtn:Hide()
     frame.travelBtn:Hide()
+    frame.playersBtn:Hide()
 
     local PRIMARY_Y, LOWER_Y = 52, 12
-    local function place(btn, y)
+    local function placeAt(btn, x, y)
         btn:ClearAllPoints()
-        btn:SetPoint("BOTTOM", frame.rightPanel, "BOTTOM", 0, y)
+        btn:SetPoint("BOTTOM", frame.rightPanel, "BOTTOM", x, y)
         btn:Show()
     end
-    if enterVisible and secondary then
-        place(frame.enterBtn, PRIMARY_Y)
-        place(secondary, LOWER_Y)
+    if onCurrent and not IsInInstance() then
+        -- Current tier, outside an instance: the two run buttons sit SIDE BY SIDE on one row (equal size).
+        placeAt(frame.playersBtn, -95, LOWER_Y)   -- Find player group (left)
+        placeAt(frame.enterBtn,    95, LOWER_Y)   -- Play bot group (right)
     elseif enterVisible then
-        place(frame.enterBtn, LOWER_Y)
-    elseif secondary then
-        place(secondary, LOWER_Y)
+        placeAt(frame.enterBtn, 0, LOWER_Y)       -- in an instance (Hearthstone to Exit) — single centred
     end
-    -- Play players (matchmaker) rides above Enter, only on your current tier and only outside an instance.
-    if frame.playersBtn then
-        if onCurrent and not IsInInstance() then frame.playersBtn:Show() else frame.playersBtn:Hide() end
+    if secondary then
+        placeAt(secondary, 0, PRIMARY_Y)
     end
 end
 
@@ -1148,9 +1147,9 @@ local function CreateUI()
     -- Enter button: fires the server-side ".enter" to teleport into the current tier's dungeon
     -- (or ".leave" when already inside). The server decides where + enforces the rules.
     frame.enterBtn = CreateFrame("Button", nil, right, "UIPanelButtonTemplate")
-    frame.enterBtn:SetSize(232, 34)
-    frame.enterBtn:SetPoint("BOTTOM", right, "BOTTOM", 0, 54)   -- centred; repositioned in RenderDetail
-    frame.enterBtn:SetText("Play bots")
+    frame.enterBtn:SetSize(180, 30)
+    frame.enterBtn:SetPoint("BOTTOM", right, "BOTTOM", 0, 54)   -- repositioned in RenderDetail (paired row)
+    frame.enterBtn:SetText("Play bot group")
     frame.enterBtn:SetScript("OnClick", function()
         if IsInInstance() then
             print("|cff33ff99Deepward:|r Use your Hearthstone to leave — it is your only way out.")
@@ -1163,9 +1162,8 @@ local function CreateUI()
     -- Play players: matchmaker. Queues you (solo) for the tier; matches 5 real players or bot-fills after
     -- 60s. While queued the button becomes "Leave Queue" and shows the countdown. Fires .dwqueue.
     frame.playersBtn = CreateFrame("Button", nil, right, "UIPanelButtonTemplate")
-    frame.playersBtn:SetSize(232, 26)
-    frame.playersBtn:SetPoint("BOTTOM", frame.enterBtn, "TOP", 0, 6)
-    frame.playersBtn:SetText("Play players")
+    frame.playersBtn:SetSize(180, 30)   -- same size as Play bot group; placed beside it in RenderDetail
+    frame.playersBtn:SetText("Find player group")
     frame.playersQueued = false
     frame.playersBtn:SetScript("OnClick", function()
         if IsInInstance() then return end
@@ -1234,11 +1232,11 @@ function UpdateQueueUI(state)
     local left, have, need = state:match("^searching:(%d+):(%d+):(%d+)")
     if left then
         frame.playersQueued = true
-        frame.playersBtn:SetText(("Leave Queue — %ss (%s/%s)"):format(left, have, need))
+        frame.playersBtn:SetText(("Leave (%ss · %s/%s)"):format(left, have, need))
         frame.playersBtn:Show()
     else
         frame.playersQueued = false
-        frame.playersBtn:SetText("Play players")
+        frame.playersBtn:SetText("Find player group")
         if state == "matched" then
             print("|cff33ff99Deepward:|r Match funnet — gruppa dannes, du sendes inn!")
         end
