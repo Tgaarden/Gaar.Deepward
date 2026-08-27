@@ -921,6 +921,80 @@ local function ShowRoleCheckPopup(leaderName)
     roleCheckFrame:Show()
 end
 
+-- Match-found accept dialog: the server proposes a full group ("P=<secs>") and gives you 30s to accept.
+-- Accept -> ".dwqueue accept" then wait for the others; Decline -> ".dwqueue decline" and it dissolves;
+-- run out the clock -> the server drops you. "P=waiting" = you accepted, "P=cancel" = the proposal ended.
+local matchPopup
+local function HideMatchPopup()
+    if matchPopup then matchPopup.deadline = nil; matchPopup:Hide() end
+end
+local function SetMatchWaiting()
+    if matchPopup and matchPopup:IsShown() then
+        matchPopup.accepted = true
+        matchPopup.accept:Disable()
+        matchPopup.msg:SetText("Akseptert \226\128\148 venter p\195\165 de andre spillerne...")
+    end
+end
+local function ShowMatchPopup(secs)
+    EnsureDB()
+    if not matchPopup then
+        local f = CreateFrame("Frame", "DeepwardMatchPopup", UIParent)
+        f:SetSize(330, 158)
+        f:SetPoint("CENTER", 0, 160)
+        f:SetFrameStrata("FULLSCREEN_DIALOG")
+        f:SetBackdrop({
+            bgFile   = "Interface\\DialogFrame\\UI-DialogBox-Background",
+            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+            tile = true, tileSize = 32, edgeSize = 32,
+            insets = { left = 11, right = 12, top = 12, bottom = 11 },
+        })
+        f:EnableMouse(true)
+        table.insert(UISpecialFrames, "DeepwardMatchPopup")   -- ESC closes (does not decline; server times out)
+        f.title = f:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
+        f.title:SetPoint("TOP", 0, -16)
+        f.title:SetText("Gruppe funnet!")
+        f.msg = f:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+        f.msg:SetPoint("TOP", 0, -46)
+        f.msg:SetWidth(290)
+        f.timer = f:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
+        f.timer:SetPoint("TOP", 0, -80)
+        f.accept = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+        f.accept:SetSize(122, 26)
+        f.accept:SetPoint("BOTTOM", f, "BOTTOM", -66, 16)
+        f.accept:SetText("Accept")
+        f.accept:SetScript("OnClick", function()
+            SendCmd(".dwqueue accept")
+            SetMatchWaiting()
+        end)
+        f.decline = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+        f.decline:SetSize(122, 26)
+        f.decline:SetPoint("BOTTOM", f, "BOTTOM", 66, 16)
+        f.decline:SetText("Decline")
+        f.decline:SetScript("OnClick", function()
+            SendCmd(".dwqueue decline")
+            HideMatchPopup()
+        end)
+        f:SetScript("OnUpdate", function(self)
+            if not self.deadline then return end
+            local left = self.deadline - GetTime()
+            if left < 0 then left = 0 end
+            self.timer:SetText(("%ds"):format(math.ceil(left)))
+            if left <= 0 then
+                self.deadline = nil
+                self:Hide()   -- server enforces its own 30s deadline and drops non-accepters
+            end
+        end)
+        matchPopup = f
+    end
+    local f = matchPopup
+    f.accepted = false
+    f.accept:Enable()
+    f.msg:SetText("En gruppe er klar. Aksepter for \195\165 bli med.")
+    f.deadline = GetTime() + (tonumber(secs) or 30)
+    if PlaySound then pcall(PlaySound, "ReadyCheck") end   -- audible alert, like a ready check
+    f:Show()
+end
+
 local function CreateUI()
     if frame then
         return
@@ -1295,6 +1369,7 @@ function UpdateQueueUI(state)
     else
         frame.playersQueued = false
         frame.playersBtn:SetText("Find player group")
+        if HideMatchPopup then HideMatchPopup() end   -- close the accept dialog on form / cancel / fail
         if state == "matched" then
             print("|cff33ff99Deepward:|r Match funnet — gruppa dannes, du sendes inn!")
         elseif state == "failed" then
@@ -1314,6 +1389,18 @@ liveFrame:SetScript("OnEvent", function(_, event, prefix, message)
         local rc = message:match("RC=(.*)")
         if rc then                          -- leader started a role check -> pop the role picker
             ShowRoleCheckPopup(rc)
+            return
+        end
+        local pm = message:match("P=(.*)")
+        if pm then                          -- match-found accept dialog
+            if pm == "cancel" then
+                HideMatchPopup()
+            elseif pm == "waiting" then
+                SetMatchWaiting()
+            else
+                local secs = tonumber(pm)
+                if secs then ShowMatchPopup(secs) end
+            end
             return
         end
         local q = message:match("Q=(.*)")
