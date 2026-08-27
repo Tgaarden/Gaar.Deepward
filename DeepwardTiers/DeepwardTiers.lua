@@ -1357,9 +1357,54 @@ end
 
 -- Matchmaker status from the server ("Q=..."). Toggles the Play players button into a live "Leave Queue"
 -- countdown, and resets it when the match forms / is cancelled. Global so the addon-message handler finds it.
+-- Standalone queue banner pinned to the TOP of the screen — shows the live search countdown whether or
+-- not the progression panel is open (the panel's own Leave button only exists while the panel is visible).
+local queueBanner
+local function HideQueueBanner()
+    if queueBanner then queueBanner:Hide() end
+end
+local function ShowQueueBanner(left, have, full)
+    if not queueBanner then
+        local f = CreateFrame("Frame", "DeepwardQueueBanner", UIParent)
+        f:SetSize(300, 40)
+        f:SetPoint("TOP", UIParent, "TOP", 0, -8)
+        f:SetFrameStrata("HIGH")
+        f:SetBackdrop({
+            bgFile   = "Interface\\DialogFrame\\UI-DialogBox-Background",
+            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+            tile = true, tileSize = 16, edgeSize = 12,
+            insets = { left = 4, right = 4, top = 4, bottom = 4 },
+        })
+        f:SetBackdropColor(0, 0, 0, 0.85)
+        f.text = f:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+        f.text:SetPoint("LEFT", 12, 0)
+        f.leave = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+        f.leave:SetSize(62, 22)
+        f.leave:SetPoint("RIGHT", -8, 0)
+        f.leave:SetText("Leave")
+        f.leave:SetScript("OnClick", function() SendCmd(".dwqueue leave") end)
+        queueBanner = f
+    end
+    local f = queueBanner
+    if have and full then
+        f.text:SetText(("|cffffd200Deepward:|r s\195\184ker gruppe \226\128\148 %ss  (%s/%s)"):format(left, have, full))
+    else
+        f.text:SetText(("|cffffd200Deepward:|r s\195\184ker gruppe \226\128\148 %ss"):format(left))
+    end
+    f:Show()
+end
+
 function UpdateQueueUI(state)
+    -- Drive the top-of-screen banner FIRST — it must work even if the panel frame isn't built/open.
+    local left, have, full = state:match("^searching:(%d+):(%d+):(%d+)")
+    if not left then left = state:match("^searching:(%d+)") end
+    if left then
+        ShowQueueBanner(left, have, full)
+    else
+        HideQueueBanner()
+    end
+
     if not frame or not frame.playersBtn then return end
-    local left = state:match("^searching:(%d+)")
     if left then
         frame.playersQueued = true
         -- Show only the countdown, not the raw queue count: with role caps the number in the queue isn't
@@ -1399,7 +1444,10 @@ liveFrame:SetScript("OnEvent", function(_, event, prefix, message)
                 SetMatchWaiting()
             else
                 local secs = tonumber(pm)
-                if secs then ShowMatchPopup(secs) end
+                if secs then
+                    HideQueueBanner()       -- the accept dialog takes over from the search banner
+                    ShowMatchPopup(secs)
+                end
             end
             return
         end
