@@ -935,7 +935,7 @@ local function SetMatchWaiting()
         matchPopup.msg:SetText("Akseptert \226\128\148 venter p\195\165 de andre spillerne...")
     end
 end
-local function ShowMatchPopup(secs)
+local function ShowMatchPopup(secs, isBots)
     EnsureDB()
     if not matchPopup then
         local f = CreateFrame("Frame", "DeepwardMatchPopup", UIParent)
@@ -989,7 +989,11 @@ local function ShowMatchPopup(secs)
     local f = matchPopup
     f.accepted = false
     f.accept:Enable()
-    f.msg:SetText("En gruppe er klar. Aksepter for \195\165 bli med.")
+    if isBots then
+        f.msg:SetText("En gruppe er klar (fylles med bots). Aksepter for \195\165 bli med.")
+    else
+        f.msg:SetText("En gruppe er klar. Aksepter for \195\165 bli med.")
+    end
     f.deadline = GetTime() + (tonumber(secs) or 30)
     if PlaySound then pcall(PlaySound, "ReadyCheck") end   -- audible alert, like a ready check
     f:Show()
@@ -1509,10 +1513,11 @@ liveFrame:SetScript("OnEvent", function(_, event, prefix, message)
             elseif pm == "waiting" then
                 SetMatchWaiting()
             else
-                local secs = tonumber(pm)
+                local secs, mode = pm:match("^(%d+):?(%a*)")
+                secs = tonumber(secs)
                 if secs then
                     HideQueueBanner()       -- the accept dialog takes over from the search banner
-                    ShowMatchPopup(secs)
+                    ShowMatchPopup(secs, mode == "bots")
                 end
             end
             return
