@@ -1104,7 +1104,7 @@ local function CreateUI()
     -- so long descriptions scroll within the beige field instead of spilling over the buttons.
     local bodyScroll = CreateFrame("ScrollFrame", "DeepwardTiersBodyScroll", right, "UIPanelScrollFrameTemplate")
     bodyScroll:SetPoint("TOPLEFT", 18, -170)           -- top sits below the title + STATUS badge (avoids overlapping Level)
-    bodyScroll:SetPoint("BOTTOMRIGHT", -30, 176)       -- ends ABOVE the instance-selector row (~124-152) so boss text never lies under the buttons
+    bodyScroll:SetPoint("BOTTOMRIGHT", -30, 112)       -- extends down to just above "Your role:" (instance selectors moved to the top now)
     local bodyChild = CreateFrame("Frame", nil, bodyScroll)
     bodyChild:SetSize(556, 10)
     bodyScroll:SetScrollChild(bodyChild)
