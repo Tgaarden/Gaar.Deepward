@@ -1357,41 +1357,107 @@ end
 
 -- Matchmaker status from the server ("Q=..."). Toggles the Play players button into a live "Leave Queue"
 -- countdown, and resets it when the match forms / is cancelled. Global so the addon-message handler finds it.
--- Standalone queue banner pinned to the TOP of the screen — shows the live search countdown whether or
--- not the progression panel is open (the panel's own Leave button only exists while the panel is visible).
-local queueBanner
+-- ---------------------------------------------------------------------------
+-- DeepwardAlert — reusable top-of-screen HUD. One alert per `key`; alerts stack
+-- downward from the top and work whether or not the progression panel is open.
+-- Feed it from any server message: queue search, dungeon progress, boss kills, etc.
+--   DeepwardAlert(key, { label=string, deadline=GetTime()+secs?, button={text,cmd,onClick}?, color? })
+--   DeepwardAlertHide(key)
+-- If `deadline` is set the alert shows a live countdown ("label — 12s"); when it hits 0 it stays at 0
+-- (the server owns the actual timeout). Calling DeepwardAlert again with the same key updates in place.
+-- ---------------------------------------------------------------------------
+local dwAlerts = {}       -- key -> frame
+local dwAlertOrder = {}   -- ordered list of keys (top-to-bottom)
+
+local function DwLayoutAlerts()
+    local y = -8
+    for _, k in ipairs(dwAlertOrder) do
+        local a = dwAlerts[k]
+        if a and a:IsShown() then
+            a:ClearAllPoints()
+            a:SetPoint("TOP", UIParent, "TOP", 0, y)
+            y = y - (a:GetHeight() + 6)
+        end
+    end
+end
+
+function DeepwardAlertHide(key)
+    local a = dwAlerts[key]
+    if a then a.deadline = nil; a:Hide() end
+    for i, k in ipairs(dwAlertOrder) do
+        if k == key then table.remove(dwAlertOrder, i); break end
+    end
+    DwLayoutAlerts()
+end
+
+local function DwMakeAlert()
+    local f = CreateFrame("Frame", nil, UIParent)
+    f:SetSize(320, 40)
+    f:SetFrameStrata("HIGH")
+    f:SetBackdrop({
+        bgFile   = "Interface\\DialogFrame\\UI-DialogBox-Background",
+        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+        tile = true, tileSize = 16, edgeSize = 12,
+        insets = { left = 4, right = 4, top = 4, bottom = 4 },
+    })
+    f:SetBackdropColor(0, 0, 0, 0.85)
+    f.text = f:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    f.text:SetPoint("LEFT", 12, 0)
+    f.btn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    f.btn:SetSize(64, 22)
+    f.btn:SetPoint("RIGHT", -8, 0)
+    f:SetScript("OnUpdate", function(self)
+        if not self.deadline then return end
+        local left = self.deadline - GetTime()
+        if left < 0 then left = 0 end
+        self.text:SetText(self.label .. (" \226\128\148 %ds"):format(math.ceil(left)))
+    end)
+    return f
+end
+
+function DeepwardAlert(key, opts)
+    local a = dwAlerts[key]
+    if not a then
+        a = DwMakeAlert()
+        dwAlerts[key] = a
+        table.insert(dwAlertOrder, key)
+    end
+    a.label = opts.label or ""
+    a.deadline = opts.deadline
+    if opts.button then
+        a.btn:SetText(opts.button.text or "OK")
+        local cmd, fn = opts.button.cmd, opts.button.onClick
+        a.btn:SetScript("OnClick", function()
+            if cmd then SendCmd(cmd) end
+            if fn then fn() end
+        end)
+        a.btn:Show()
+        a.text:SetWidth(320 - 64 - 30)   -- leave room for the button
+    else
+        a.btn:Hide()
+        a.text:SetWidth(320 - 24)
+    end
+    if not a.deadline then a.text:SetText(a.label) end   -- static text (OnUpdate handles the timed case)
+    a:Show()
+    DwLayoutAlerts()
+end
+
+-- Queue search banner = one caller of the generic alert (key "queue").
 local function HideQueueBanner()
-    if queueBanner then queueBanner:Hide() end
+    DeepwardAlertHide("queue")
 end
 local function ShowQueueBanner(left, have, full)
-    if not queueBanner then
-        local f = CreateFrame("Frame", "DeepwardQueueBanner", UIParent)
-        f:SetSize(300, 40)
-        f:SetPoint("TOP", UIParent, "TOP", 0, -8)
-        f:SetFrameStrata("HIGH")
-        f:SetBackdrop({
-            bgFile   = "Interface\\DialogFrame\\UI-DialogBox-Background",
-            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-            tile = true, tileSize = 16, edgeSize = 12,
-            insets = { left = 4, right = 4, top = 4, bottom = 4 },
-        })
-        f:SetBackdropColor(0, 0, 0, 0.85)
-        f.text = f:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-        f.text:SetPoint("LEFT", 12, 0)
-        f.leave = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-        f.leave:SetSize(62, 22)
-        f.leave:SetPoint("RIGHT", -8, 0)
-        f.leave:SetText("Leave")
-        f.leave:SetScript("OnClick", function() SendCmd(".dwqueue leave") end)
-        queueBanner = f
-    end
-    local f = queueBanner
+    local label
     if have and full then
-        f.text:SetText(("|cffffd200Deepward:|r s\195\184ker gruppe \226\128\148 %ss  (%s/%s)"):format(left, have, full))
+        label = ("|cffffd200Deepward:|r s\195\184ker gruppe  (%s/%s)"):format(have, full)
     else
-        f.text:SetText(("|cffffd200Deepward:|r s\195\184ker gruppe \226\128\148 %ss"):format(left))
+        label = "|cffffd200Deepward:|r s\195\184ker gruppe"
     end
-    f:Show()
+    DeepwardAlert("queue", {
+        label = label,
+        deadline = GetTime() + (tonumber(left) or 0),
+        button = { text = "Leave", cmd = ".dwqueue leave" },
+    })
 end
 
 function UpdateQueueUI(state)
