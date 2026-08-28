@@ -37,11 +37,10 @@ local function DwUpdateKeepMarkers(frame)
         local btn = _G[name and (name .. "Item" .. i)]
         if btn then
             if not btn.dwKeepLock then
-                local t = btn:CreateTexture(nil, "OVERLAY")
-                t:SetDrawLayer("OVERLAY", 7)                 -- above the stack-count text
+                local t = btn:CreateTexture(nil, "OVERLAY")  -- OVERLAY = top layer (no sublevel arg; 3.3.5-safe)
                 t:SetSize(16, 16)
                 t:SetPoint("BOTTOMRIGHT", -1, 1)             -- bottom-right (gear has no stack-count there)
-                t:SetTexture("Interface\\AddOns\\DeepwardUI\\keeplock")   -- custom gold padlock (guaranteed to render)
+                t:SetTexture("Interface\\AddOns\\DeepwardUI\\keeplock")   -- custom gold padlock
                 btn.dwKeepLock = t
             end
             local link = GetContainerItemLink(bag, btn:GetID())
@@ -51,6 +50,19 @@ local function DwUpdateKeepMarkers(frame)
     end
 end
 hooksecurefunc("ContainerFrame_Update", DwUpdateKeepMarkers)
+
+-- Belt-and-suspenders: refresh every open bag on bag events too (independent of the update hook's timing).
+local function DwRefreshAllBags()
+    for i = 1, (NUM_CONTAINER_FRAMES or 13) do
+        local cf = _G["ContainerFrame" .. i]
+        if cf and cf:IsShown() then DwUpdateKeepMarkers(cf) end
+    end
+end
+local dwBagEv = CreateFrame("Frame")
+dwBagEv:RegisterEvent("BAG_UPDATE")
+dwBagEv:RegisterEvent("BAG_OPEN")
+dwBagEv:RegisterEvent("PLAYER_ENTERING_WORLD")
+dwBagEv:SetScript("OnEvent", DwRefreshAllBags)
 
 -- Shift-click a bag item -> toggle its keep flag. Always-protected key items (HS/Repair Bot) can't be toggled.
 hooksecurefunc("ContainerFrameItemButton_OnModifiedClick", function(self, button)
