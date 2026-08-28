@@ -38,9 +38,10 @@ local function DwUpdateKeepMarkers(frame)
         if btn then
             if not btn.dwKeepLock then
                 local t = btn:CreateTexture(nil, "OVERLAY")
-                t:SetSize(15, 15)
-                t:SetPoint("BOTTOMRIGHT", -1, 1)
-                t:SetTexture("Interface\\Buttons\\LockButton-Locked-Up")   -- padlock = "kept, won't sell"
+                t:SetDrawLayer("OVERLAY", 7)                 -- above the stack-count text
+                t:SetSize(16, 16)
+                t:SetPoint("BOTTOMRIGHT", -1, 1)             -- bottom-right (gear has no stack-count there)
+                t:SetTexture("Interface\\AddOns\\DeepwardUI\\keeplock")   -- custom gold padlock (guaranteed to render)
                 btn.dwKeepLock = t
             end
             local link = GetContainerItemLink(bag, btn:GetID())
