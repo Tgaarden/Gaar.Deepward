@@ -64,6 +64,37 @@ dwBagEv:RegisterEvent("BAG_OPEN")
 dwBagEv:RegisterEvent("PLAYER_ENTERING_WORLD")
 dwBagEv:SetScript("OnEvent", DwRefreshAllBags)
 
+-- /dwlock — diagnostic: open your bags first, then run it. Puts a RED test square (solid colour, always
+-- renders) on the first slot of every open bag + prints what it finds, so we can see whether the overlay
+-- mechanism works (red shows) vs the padlock texture failing to load (red shows but no lock).
+SLASH_DWLOCK1 = "/dwlock"
+SlashCmdList["DWLOCK"] = function()
+    local frames = 0
+    for i = 1, (NUM_CONTAINER_FRAMES or 13) do
+        local cf = _G["ContainerFrame" .. i]
+        if cf and cf:IsShown() then
+            frames = frames + 1
+            local nm = cf:GetName()
+            local sz = cf.size or GetContainerNumSlots(cf:GetID()) or 0
+            print(("|cff33ff99DWLOCK:|r %s id=%s size=%s"):format(tostring(nm), tostring(cf:GetID()), tostring(sz)))
+            local b = nm and _G[nm .. "Item1"]
+            if b then
+                if not b.dwTest then
+                    local t = b:CreateTexture(nil, "OVERLAY")
+                    t:SetAllPoints(b)
+                    t:SetTexture(1, 0, 0, 0.5)   -- solid red, guaranteed to render
+                    b.dwTest = t
+                end
+                b.dwTest:Show()
+                print(("  red overlay on %sItem1 (shown=%s)"):format(nm, tostring(b.dwTest:IsShown())))
+            else
+                print(("  NO button %sItem1"):format(tostring(nm)))
+            end
+        end
+    end
+    if frames == 0 then print("|cff33ff99DWLOCK:|r no OPEN bag frames — open your bags first, then /dwlock") end
+end
+
 -- Shift-click a bag item -> toggle its keep flag. Always-protected key items (HS/Repair Bot) can't be toggled.
 hooksecurefunc("ContainerFrameItemButton_OnModifiedClick", function(self, button)
     if not IsShiftKeyDown() or button ~= "LeftButton" then return end
