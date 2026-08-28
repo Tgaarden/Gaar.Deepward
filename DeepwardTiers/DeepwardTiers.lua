@@ -773,11 +773,10 @@ local function RenderDetail(tier)
     -- current tier / in-instance; Travel needs a different reached tier), and Advance is current-tier
     -- only — so at most two buttons ever stack. (Visibility booleans computed at the top of RenderDetail.)
 
-    -- Left-column action stack, horizontally CENTERED on the left panel and stacked BOTTOM-UP so the
-    -- desired visual order falls out (top->bottom: Play with bots -> Go to group leader -> Ascend at the
-    -- Herald). Bottom-anchored, so a hidden button leaves no gap. Equal size, centered.
+    -- Left-column action stack, horizontally CENTERED on the left panel and stacked BOTTOM-UP (top->bottom:
+    -- Play with bots -> Ascend at the Herald). Bottom-anchored, so a hidden button leaves no gap.
+    -- "Go to group leader" is NOT here — for a non-leader it takes the center "Find player group" slot.
     do
-        local grouped = (GetNumPartyMembers() or 0) > 0 or (GetNumRaidMembers() or 0) > 0
         local prev = nil   -- lowest visible button so far (nil = anchor to panel bottom)
         local function stackUp(btn, shown)
             if not btn then return end
@@ -791,9 +790,7 @@ local function RenderDetail(tier)
             btn:Show()
             prev = btn
         end
-        -- add lowest-first (Ascend at the bottom), so the on-screen order reads Play / Go to leader / Ascend
         stackUp(frame.advanceBtn, advanceVisible)
-        stackUp(frame.toLeaderBtn, grouped)
         stackUp(frame.enterBtn, onCurrent or IsInInstance())
     end
 
@@ -805,11 +802,15 @@ local function RenderDetail(tier)
         secondary = frame.travelBtn
     end
 
-    -- Hide Enter/Travel, then place whatever is visible: Enter centred (upper if a secondary follows),
-    -- secondary centred on the line below.
     frame.travelBtn:Hide()
     frame.playersBtn:Hide()
+    frame.toLeaderBtn:Hide()
     if frame.fillBotsChk then frame.fillBotsChk:Hide() end
+
+    -- Only a solo player or the party/raid LEADER can queue (the leader queues for the whole group). A
+    -- non-leader instead gets "Go to group leader" in that same center slot; the leader never sees it.
+    local grouped  = (GetNumPartyMembers() or 0) > 0 or (GetNumRaidMembers() or 0) > 0
+    local canQueue = (not grouped) or IsPartyLeader() or IsRaidLeader()
 
     local PRIMARY_Y, LOWER_Y = 52, 12
     local function placeAt(btn, x, y)
@@ -817,18 +818,21 @@ local function RenderDetail(tier)
         btn:SetPoint("BOTTOM", frame.rightPanel, "BOTTOM", x, y)
         btn:Show()
     end
-    -- Find player group: centred alone in the right panel (current tier, outside an instance).
-    if onCurrent and not IsInInstance() then
-        placeAt(frame.playersBtn, 0, LOWER_Y)
-        -- Fill-with-bots checkbox on the same row, pinned to the panel's far-right edge.
-        if frame.fillBotsChk then
-            frame.fillBotsChk:ClearAllPoints()
-            frame.fillBotsChk:SetPoint("RIGHT", frame.rightPanel, "BOTTOMRIGHT", -14, LOWER_Y + 15)
-            frame.fillBotsChk:SetChecked(DeepwardTiersDB and DeepwardTiersDB.fillBots)
-            frame.fillBotsChk:Show()
+    if canQueue then
+        -- Find player group: centred in the right panel (current tier, outside an instance).
+        if onCurrent and not IsInInstance() then
+            placeAt(frame.playersBtn, 0, LOWER_Y)
+            if frame.fillBotsChk then   -- Fill-with-bots checkbox on the same row, far-right edge
+                frame.fillBotsChk:ClearAllPoints()
+                frame.fillBotsChk:SetPoint("RIGHT", frame.rightPanel, "BOTTOMRIGHT", -14, LOWER_Y + 15)
+                frame.fillBotsChk:SetChecked(DeepwardTiersDB and DeepwardTiersDB.fillBots)
+                frame.fillBotsChk:Show()
+            end
         end
+    elseif grouped then
+        -- Non-leader: can't queue — offer "Go to group leader" in the center slot instead.
+        placeAt(frame.toLeaderBtn, 0, LOWER_Y)
     end
-    -- (Play with bots / Go to leader / Ascend are stacked in the LEFT column above — see the stack block.)
     if secondary then
         placeAt(secondary, 0, PRIMARY_Y)
     end
@@ -1225,11 +1229,18 @@ local function CreateUI()
     -- Refresh (icon only, no label) bottom-left of the instance view: forces a full server-side reconcile
     -- (.dwrefresh) so a boss kill the panel missed (far group-mate / older run) is recovered on demand.
     frame.refreshBtn = CreateFrame("Button", nil, right)
-    frame.refreshBtn:SetSize(26, 26)
+    frame.refreshBtn:SetSize(30, 30)
     frame.refreshBtn:SetPoint("BOTTOMLEFT", right, "BOTTOMLEFT", 12, 12)
-    frame.refreshBtn:SetNormalTexture("Interface\\Buttons\\UI-RefreshButton")
-    frame.refreshBtn:SetPushedTexture("Interface\\Buttons\\UI-RefreshButton")
-    frame.refreshBtn:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
+    frame.refreshBtn:SetFrameLevel(right:GetFrameLevel() + 20)
+    -- Ability_Hunter_Readiness = green circular "refresh" arrows; a guaranteed 3.3.5 icon (UI-RefreshButton
+    -- does NOT exist in 3.3.5, so the button was invisible before).
+    frame.refreshBtn:SetNormalTexture("Interface\\Icons\\Ability_Hunter_Readiness")
+    frame.refreshBtn:SetPushedTexture("Interface\\Icons\\Ability_Hunter_Readiness")
+    frame.refreshBtn:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+    local rbBorder = frame.refreshBtn:CreateTexture(nil, "OVERLAY")   -- visible metal ring so it reads as a button
+    rbBorder:SetPoint("TOPLEFT", -2, 2)
+    rbBorder:SetPoint("BOTTOMRIGHT", 2, -2)
+    rbBorder:SetTexture("Interface\\Buttons\\UI-Quickslot2")
     frame.refreshBtn:SetScript("OnClick", function()
         SendCmd(".dwrefresh")
         RequestSync()
