@@ -305,6 +305,20 @@ local function ParseRoster(message)
     return true
 end
 
+-- Account-wide journey stats, sent as "AS=chars:kills:cleared:highTier:goldCopper:playedSec".
+local DeepwardAccount   -- { chars, kills, cleared, highTier, gold(copper), played(sec) }
+local function ParseAccount(message)
+    local a = message:match("AS=([%d:]+)")
+    if not a then return false end
+    local c, k, cl, ht, g, p = a:match("^(%d+):(%d+):(%d+):(%d+):(%d+):(%d+)")
+    if not c then return false end
+    DeepwardAccount = {
+        chars = tonumber(c), kills = tonumber(k), cleared = tonumber(cl),
+        highTier = tonumber(ht), gold = tonumber(g), played = tonumber(p),
+    }
+    return true
+end
+
 local function RequestSync()
     SendCmd(".dwrole " .. (DeepwardTiersDB and DeepwardTiersDB.role or "dps"))   -- register my role for the roster
     SendCmd(".dwsync")
@@ -456,14 +470,29 @@ UpdateJourney = function()
     if not frame or not frame.journeyText then return end
     local kills, insts = 0, 0
     local curT = CurrentTierId()
-    local maxT = (DeepwardLive and DeepwardLive.max) or curT
     if DeepwardLive then
         if DeepwardLive.killed  then for _ in pairs(DeepwardLive.killed)  do kills = kills + 1 end end
         if DeepwardLive.cleared then for _ in pairs(DeepwardLive.cleared) do insts = insts + 1 end end
     end
-    frame.journeyText:SetText(
-        ("|cffffd100Tier:|r %d\n|cffffd100Level:|r %d\n\n|cffffd100Bosser drept:|r %d\n|cffffd100Instanser klart:|r %d\n\n|cffffd100Høyeste tier nådd:|r %d")
-        :format(curT, UnitLevel("player"), kills, insts, maxT))
+    -- tier label: the capstone raid tier (66) reads as "9 (Raid)"
+    local function tlabel(n) if n == 66 then return "9 (Raid)" else return tostring(n) end end
+
+    -- This character (compact: two stats per line to fit the fixed left-column band).
+    local s = ("|cffffd100Denne karakteren|r\n|cffffd100Tier:|r %d   |cffffd100Level:|r %d\n|cffffd100Bosser:|r %d   |cffffd100Instanser:|r %d")
+              :format(curT, UnitLevel("player"), kills, insts)
+
+    local acc = DeepwardAccount
+    if acc then
+        local goldG   = math.floor((acc.gold or 0) / 10000)
+        local playedH = (acc.played or 0) / 3600
+        s = s .. ("\n\n|cffffd100Kontoen|r\n|cffffd100Høyeste tier nådd:|r %s\n|cffffd100Karakterer:|r %d   |cffffd100Bosser:|r %d\n|cffffd100Instanser:|r %d   |cffffd100Gull:|r %dg\n|cffffd100Spilletid:|r %.1ft")
+                 :format(tlabel(acc.highTier), acc.chars, acc.kills, acc.cleared, goldG, playedH)
+    else
+        -- account stats not arrived yet: fall back to this char's own highest reached
+        local maxT = (DeepwardLive and DeepwardLive.max) or curT
+        s = s .. ("\n\n|cffffd100Høyeste tier nådd:|r %s"):format(tlabel(maxT))
+    end
+    frame.journeyText:SetText(s)
 end
 
 -- Bump a role count in the chosen bot comp, clamped to [0, free slots] (total can't exceed the slots
@@ -1549,6 +1578,10 @@ liveFrame:SetScript("OnEvent", function(_, event, prefix, message)
         end
         if ParseRoster(message) then       -- roster-only message ("G=...") -> just refresh the roster
             if RenderRoster then RenderRoster() end
+            return
+        end
+        if ParseAccount(message) then      -- account-wide stats ("AS=...") -> refresh the journey summary
+            if UpdateJourney then UpdateJourney() end
             return
         end
         ParseLive(message)
