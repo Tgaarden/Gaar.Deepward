@@ -1651,9 +1651,9 @@ opener:SetScript("OnDragStart", opener.StartMoving)
 opener:SetScript("OnDragStop", opener.StopMovingOrSizing)
 
 local icon = opener:CreateTexture(nil, "ARTWORK")
-icon:SetSize(20, 20)
+icon:SetSize(22, 22)
 icon:SetPoint("CENTER")
-icon:SetTexture("Interface\\Icons\\Achievement_Dungeon_UtgardePinnacle_75")
+icon:SetTexture("Interface\\AddOns\\DeepwardTiers\\deepward-logo")   -- Deepward logo (gold hex crest)
 
 local ring = opener:CreateTexture(nil, "OVERLAY")
 ring:SetSize(53, 53)
@@ -1668,3 +1668,132 @@ opener:SetScript("OnEnter", function(self)
     GameTooltip:Show()
 end)
 opener:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+-- ---------------------------------------------------------------------------
+-- Instance map (M-override): classic 1-60 dungeons have NO interior map in 3.3.5, so while inside a Deepward
+-- dungeon we rebind M to show a Deepward map (Atlas floor art shipped as addon BLPs). Static layout only —
+-- 3.3.5 gives no player coords in these instances, so there is no live "you are here" dot. Keyed by the
+-- localized instance name (GetInstanceInfo); multi-wing instances (SM, Dire Maul) show wing buttons.
+local INSTANCE_MAPS = {
+    ["Ragefire Chasm"]            = { { n = "Ragefire Chasm",   art = "RagefireChasm" } },
+    ["The Deadmines"]             = { { n = "The Deadmines",    art = "TheDeadmines" } },
+    ["Wailing Caverns"]           = { { n = "Wailing Caverns",  art = "WailingCaverns" } },
+    ["Shadowfang Keep"]           = { { n = "Shadowfang Keep",  art = "ShadowfangKeep" } },
+    ["The Stockade"]              = { { n = "The Stockade",     art = "TheStockade" } },
+    ["Blackfathom Deeps"]         = { { n = "Blackfathom Deeps",art = "BlackfathomDeeps" } },
+    ["Scarlet Monastery"]         = { { n = "Graveyard", art = "SMGraveyard" }, { n = "Library", art = "SMLibrary" },
+                                      { n = "Armory", art = "SMArmory" }, { n = "Cathedral", art = "SMCathedral" } },
+    ["Gnomeregan"]                = { { n = "Gnomeregan",       art = "Gnomeregan" } },
+    ["Razorfen Kraul"]            = { { n = "Razorfen Kraul",   art = "RazorfenKraul" } },
+    ["Razorfen Downs"]            = { { n = "Razorfen Downs",   art = "RazorfenDowns" } },
+    ["Uldaman"]                   = { { n = "Uldaman",          art = "Uldaman" } },
+    ["Zul'Farrak"]                = { { n = "Zul'Farrak",       art = "ZulFarrak" } },
+    ["Maraudon"]                  = { { n = "Maraudon",         art = "Maraudon" } },
+    ["The Temple of Atal'Hakkar"] = { { n = "Sunken Temple",    art = "TheSunkenTemple" } },
+    -- Tier 8 (available for later):
+    ["Scholomance"]               = { { n = "Scholomance",      art = "Scholomance" } },
+    ["Stratholme"]                = { { n = "Stratholme",       art = "Stratholme" } },
+    ["Blackrock Depths"]          = { { n = "Blackrock Depths", art = "BlackrockDepths" } },
+    ["Lower Blackrock Spire"]     = { { n = "Lower Blackrock Spire", art = "BlackrockSpireLower" } },
+    ["Blackrock Spire"]           = { { n = "Lower Spire", art = "BlackrockSpireLower" }, { n = "Upper Spire", art = "BlackrockSpireUpper" } },
+    ["Dire Maul"]                 = { { n = "North", art = "DireMaulNorth" }, { n = "East", art = "DireMaulEast" }, { n = "West", art = "DireMaulWest" } },
+}
+
+local mapFrame
+local function BuildMapFrame()
+    if mapFrame then return end
+    local f = CreateFrame("Frame", "DeepwardMapFrame", UIParent)
+    f:SetSize(540, 560)
+    f:SetPoint("CENTER")
+    f:SetFrameStrata("HIGH")
+    f:EnableMouse(true)
+    f:SetMovable(true)
+    f:RegisterForDrag("LeftButton")
+    f:SetScript("OnDragStart", f.StartMoving)
+    f:SetScript("OnDragStop", f.StopMovingOrSizing)
+    f:SetBackdrop({
+        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+        tile = true, tileSize = 32, edgeSize = 32,
+        insets = { left = 11, right = 12, top = 12, bottom = 11 },
+    })
+    table.insert(UISpecialFrames, "DeepwardMapFrame")   -- ESC closes
+    f.title = f:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
+    f.title:SetPoint("TOP", 0, -14)
+    f.img = f:CreateTexture(nil, "ARTWORK")
+    f.img:SetPoint("TOP", 0, -68)
+    f.img:SetSize(512, 460)
+    local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
+    close:SetPoint("TOPRIGHT", -6, -6)
+    f.wingBtns = {}
+    f.note = f:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
+    f.note:SetPoint("BOTTOM", 0, 14)
+    f.note:SetText("Statisk kart \226\128\148 3.3.5 viser ingen posisjon i disse instansene")
+    mapFrame = f
+end
+
+local function ShowMapWing(entry)
+    mapFrame.img:SetTexture("Interface\\AddOns\\DeepwardTiers\\maps\\" .. entry.art)
+end
+
+local function ShowInstanceMap(instName)
+    local wings = INSTANCE_MAPS[instName]
+    if not wings then return false end
+    BuildMapFrame()
+    mapFrame.title:SetText("|cffffd100" .. instName .. "|r")
+    -- (re)build wing buttons
+    for _, b in ipairs(mapFrame.wingBtns) do b:Hide() end
+    if #wings > 1 then
+        for i, w in ipairs(wings) do
+            local b = mapFrame.wingBtns[i]
+            if not b then
+                b = CreateFrame("Button", nil, mapFrame, "UIPanelButtonTemplate")
+                b:SetSize(96, 22)
+                mapFrame.wingBtns[i] = b
+            end
+            b:SetText(w.n)
+            b:ClearAllPoints()
+            b:SetPoint("TOPLEFT", 20 + (i - 1) * 100, -40)
+            b:SetScript("OnClick", function() ShowMapWing(w) end)
+            b:Show()
+        end
+    end
+    ShowMapWing(wings[1])
+    mapFrame:Show()
+end
+
+local function ToggleInstanceMap()
+    local name = GetInstanceInfo and GetInstanceInfo() or nil
+    if not name or not INSTANCE_MAPS[name] then return false end
+    if mapFrame and mapFrame:IsShown() then
+        mapFrame:Hide()
+    else
+        ShowInstanceMap(name)
+    end
+    return true
+end
+
+-- Secure-less toggle button that the overridden M key clicks.
+local mapToggleBtn = CreateFrame("Button", "DeepwardMapToggleButton", UIParent)
+mapToggleBtn:SetScript("OnClick", function() ToggleInstanceMap() end)
+
+-- Rebind M to the Deepward map while inside a Deepward dungeon; restore it (world map) on leaving.
+local mapBinder = CreateFrame("Frame")
+mapBinder:RegisterEvent("PLAYER_ENTERING_WORLD")
+mapBinder:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+local mapOverrideOn = false
+mapBinder:SetScript("OnEvent", function()
+    local inInst = IsInInstance()
+    local name = GetInstanceInfo and GetInstanceInfo() or nil
+    local deepward = inInst and name and INSTANCE_MAPS[name] ~= nil
+    if deepward and not mapOverrideOn then
+        for _, key in ipairs({ GetBindingKey("TOGGLEWORLDMAP") }) do
+            SetOverrideBindingClick(mapToggleBtn, true, key, "DeepwardMapToggleButton")
+        end
+        mapOverrideOn = true
+    elseif not deepward and mapOverrideOn then
+        ClearOverrideBindings(mapToggleBtn)
+        mapOverrideOn = false
+        if mapFrame then mapFrame:Hide() end
+    end
+end)
