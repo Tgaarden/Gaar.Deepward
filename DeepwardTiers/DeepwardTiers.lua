@@ -1193,6 +1193,26 @@ local function CreateUI()
 
     frame.rightPanel = right
 
+    -- Refresh (icon only, no label) bottom-left of the instance view: forces a full server-side reconcile
+    -- (.dwrefresh) so a boss kill the panel missed (far group-mate / older run) is recovered on demand.
+    frame.refreshBtn = CreateFrame("Button", nil, right)
+    frame.refreshBtn:SetSize(26, 26)
+    frame.refreshBtn:SetPoint("BOTTOMLEFT", right, "BOTTOMLEFT", 12, 12)
+    frame.refreshBtn:SetNormalTexture("Interface\\Buttons\\UI-RefreshButton")
+    frame.refreshBtn:SetPushedTexture("Interface\\Buttons\\UI-RefreshButton")
+    frame.refreshBtn:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
+    frame.refreshBtn:SetScript("OnClick", function()
+        SendCmd(".dwrefresh")
+        RequestSync()
+    end)
+    frame.refreshBtn:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText("Synk fremgang")
+        GameTooltip:AddLine("Henter tapte boss-kill fra quest-loggen.", 0.8, 0.8, 0.8, true)
+        GameTooltip:Show()
+    end)
+    frame.refreshBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
     -- Title sits below a top margin so it clears the splash's own banner/logo instead of jamming
     -- against the top edge.
     frame.detailTitle = right:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
