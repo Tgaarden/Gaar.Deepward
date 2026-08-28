@@ -773,6 +773,11 @@ local function RenderDetail(tier)
     -- current tier / in-instance; Travel needs a different reached tier), and Advance is current-tier
     -- only — so at most two buttons ever stack. (Visibility booleans computed at the top of RenderDetail.)
 
+    -- Only a solo player or the party/raid LEADER drives the run (queues + starts a bot run). A non-leader
+    -- doesn't get "Play with bots" or "Find player group" — they get "Go to group leader" instead.
+    local grouped  = (GetNumPartyMembers() or 0) > 0 or (GetNumRaidMembers() or 0) > 0
+    local canQueue = (not grouped) or IsPartyLeader() or IsRaidLeader()
+
     -- Left-column action stack, horizontally CENTERED on the left panel and stacked BOTTOM-UP (top->bottom:
     -- Play with bots -> Ascend at the Herald). Bottom-anchored, so a hidden button leaves no gap.
     -- "Go to group leader" is NOT here — for a non-leader it takes the center "Find player group" slot.
@@ -791,7 +796,8 @@ local function RenderDetail(tier)
             prev = btn
         end
         stackUp(frame.advanceBtn, advanceVisible)
-        stackUp(frame.enterBtn, onCurrent or IsInInstance())
+        -- "Hearthstone to Exit" shows for everyone inside an instance; "Play with bots" only for solo/leader.
+        stackUp(frame.enterBtn, IsInInstance() or (onCurrent and canQueue))
     end
 
     -- Resolve the single bottom-band secondary (Travel only now; Advance moved to the top-right).
@@ -806,11 +812,6 @@ local function RenderDetail(tier)
     frame.playersBtn:Hide()
     frame.toLeaderBtn:Hide()
     if frame.fillBotsChk then frame.fillBotsChk:Hide() end
-
-    -- Only a solo player or the party/raid LEADER can queue (the leader queues for the whole group). A
-    -- non-leader instead gets "Go to group leader" in that same center slot; the leader never sees it.
-    local grouped  = (GetNumPartyMembers() or 0) > 0 or (GetNumRaidMembers() or 0) > 0
-    local canQueue = (not grouped) or IsPartyLeader() or IsRaidLeader()
 
     local PRIMARY_Y, LOWER_Y = 52, 12
     local function placeAt(btn, x, y)
