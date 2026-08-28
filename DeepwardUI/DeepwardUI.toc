@@ -3,7 +3,7 @@
 ## Notes: Hides unused default windows, plus a custom Spell Book + native-spellbook action-bar markers.
 ## Author: Gaar
 ## Version: 1.1
-## SavedVariables:
+## SavedVariables: DeepwardUIDB
 
 DeepwardUI.lua
 NativeSpellBook.lua

@@ -12,6 +12,61 @@ local PROTECTED = {
     [34113] = true,   -- Field Repair Bot 110G (eternal convenience item, re-granted on login)
 }
 
+-- ---------------------------------------------------------------------------
+-- User "keep" flags: ALT-click a bag item to mark its item type as never-sell. A small padlock shows on
+-- the bottom-right of every stack of it, and "Sell All" skips it. Keyed by itemID (protects all copies),
+-- persisted in DeepwardUIDB.noSell. Alt is used (not shift/ctrl) so it never clobbers the default bag
+-- behaviours (shift = split/link, ctrl = dressing room).
+-- ---------------------------------------------------------------------------
+DeepwardUIDB = DeepwardUIDB or {}
+if type(DeepwardUIDB.noSell) ~= "table" then DeepwardUIDB.noSell = {} end
+
+local function DwIsKept(itemId) return itemId and DeepwardUIDB.noSell[itemId] == true end
+
+-- Draw/refresh the padlock overlay on every slot of one container frame.
+local function DwUpdateKeepMarkers(frame)
+    if not frame or not frame.GetID then return end
+    local bag  = frame:GetID()
+    local name = frame:GetName()
+    local size = frame.size or GetContainerNumSlots(bag) or 0
+    for i = 1, size do
+        local btn = _G[name and (name .. "Item" .. i)]
+        if btn then
+            if not btn.dwKeepLock then
+                local t = btn:CreateTexture(nil, "OVERLAY")
+                t:SetSize(15, 15)
+                t:SetPoint("BOTTOMRIGHT", -1, 1)
+                t:SetTexture("Interface\\Buttons\\LockButton-Locked-Up")   -- padlock = "kept, won't sell"
+                btn.dwKeepLock = t
+            end
+            local link = GetContainerItemLink(bag, btn:GetID())
+            local id = link and tonumber(link:match("item:(%d+)"))
+            if DwIsKept(id) then btn.dwKeepLock:Show() else btn.dwKeepLock:Hide() end
+        end
+    end
+end
+hooksecurefunc("ContainerFrame_Update", DwUpdateKeepMarkers)
+
+-- Alt-click a bag item -> toggle its keep flag. OnModifiedClick fires on any modified click; the default
+-- handler ignores Alt, so acting on Alt here adds no conflict.
+hooksecurefunc("ContainerFrameItemButton_OnModifiedClick", function(self, button)
+    if not IsAltKeyDown() or button ~= "LeftButton" then return end
+    local parent = self:GetParent()
+    local bag, slot = parent and parent:GetID(), self:GetID()
+    if not bag then return end
+    local link = GetContainerItemLink(bag, slot)
+    local id = link and tonumber(link:match("item:(%d+)"))
+    if not id then return end
+    if DeepwardUIDB.noSell[id] then
+        DeepwardUIDB.noSell[id] = nil
+        print("|cff33ff99Deepward:|r " .. link .. " will be SOLD by Sell All.")
+    else
+        DeepwardUIDB.noSell[id] = true
+        print("|cff33ff99Deepward:|r " .. link .. " is now KEPT (Sell All skips it).")
+    end
+    DwUpdateKeepMarkers(parent)
+end)
+
 -- GetItemInfo's 6th return (itemType) for things that count as "resources" — never auto-sold, wherever
 -- they sit (backpack included).
 local KEEP_TYPE = {
@@ -32,7 +87,8 @@ local function DeepwardSellAll()
                 if link then
                     local itemId = tonumber(link:match("item:(%d+)"))
                     local _, _, _, _, _, itemType, _, _, _, _, sellPrice = GetItemInfo(link)
-                    if itemId and not PROTECTED[itemId] and not KEEP_TYPE[itemType or ""]
+                    if itemId and not PROTECTED[itemId] and not DwIsKept(itemId)
+                       and not KEEP_TYPE[itemType or ""]
                        and sellPrice and sellPrice > 0 then
                         local _, count = GetContainerItemInfo(bag, slot)
                         UseContainerItem(bag, slot)      -- with a merchant open, this vendors the item
@@ -52,7 +108,7 @@ local function DeepwardSellAll()
 end
 
 StaticPopupDialogs["DEEPWARD_SELL_ALL"] = {
-    text = "Sell everything in all your bags?\n(Resources, Hearthstone & Repair Bot are kept. Everything is free to buy back.)",
+    text = "Sell everything in all your bags?\n(Resources, Hearthstone, Repair Bot & Alt-click 'kept' items are skipped. Everything is free to buy back.)",
     button1 = YES,
     button2 = NO,
     OnAccept = DeepwardSellAll,
