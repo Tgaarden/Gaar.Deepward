@@ -45,8 +45,21 @@ local function SpellIsPassive(slot)
   return false
 end
 
+-- Names of the player's stances/forms/presences, read from the shapeshift bar (class-agnostic: DK presences,
+-- warrior stances, druid forms, rogue Stealth, priest Shadowform, ...). Used to flag "stance" spells.
+local function StanceNameSet()
+  local s = {}
+  local n = (GetNumShapeshiftForms and GetNumShapeshiftForms()) or 0
+  for i = 1, n do
+    local _, name = GetShapeshiftFormInfo(i)   -- 3.3.5: (texture, name, isActive, isCastable)
+    if name and name ~= "" then s[name] = true end
+  end
+  return s
+end
+
 local function BuildSpellIndex()
   local tabs = {}
+  local stances = StanceNameSet()
   local numTabs = GetNumSpellTabs() or 0
   for t = 1, numTabs do
     local tabName, _, offset, numSpells = GetSpellTabInfo(t)
@@ -59,7 +72,8 @@ local function BuildSpellIndex()
           local effectlike = string.find(string.lower(name), "effect", 1, true) ~= nil
           table.insert(entries, { slot = i, name = name, rank = rank, texture = tex,
                                   passive = SpellIsPassive(i) and true or false,
-                                  effectlike = effectlike })
+                                  effectlike = effectlike,
+                                  stance = stances[name] and true or false })
         end
       end
     end
@@ -170,6 +184,13 @@ hideEffects:SetChecked(true)
 _G["DeepwardHideEffectsText"]:SetText("Hide effects")
 _G["DeepwardHideEffectsText"]:SetFontObject(GameFontHighlightSmall)
 
+local hideStances = CreateFrame("CheckButton", "DeepwardHideStances", f, "UICheckButtonTemplate")
+hideStances:SetWidth(22); hideStances:SetHeight(22)
+hideStances:SetPoint("LEFT", _G["DeepwardHideEffectsText"], "RIGHT", 12, 0)
+hideStances:SetChecked(true)   -- default ON: hide stances/forms/presences
+_G["DeepwardHideStancesText"]:SetText("Hide stances")
+_G["DeepwardHideStancesText"]:SetFontObject(GameFontHighlightSmall)
+
 local allTabsData, tabsBuilt = nil, false
 local curTabIndex = 1
 local offset, rows, tabButtons = 0, {}, {}
@@ -195,13 +216,15 @@ local function FilteredEntries()
   local entries = CurrentEntries()
   local dropPassive = hidePassive:GetChecked()
   local dropEffects = hideEffects:GetChecked()
+  local dropStances = hideStances:GetChecked()
   local q = searchBox:GetText()
   local ql = (q and q ~= "") and string.lower(q) or nil
-  if not dropPassive and not dropEffects and not ql then return entries end
+  if not dropPassive and not dropEffects and not dropStances and not ql then return entries end
   local out = {}
   for _, e in ipairs(entries) do
     if (not dropPassive or not e.passive)
        and (not dropEffects or not e.effectlike)
+       and (not dropStances or not e.stance)
        and (not ql or string.find(string.lower(e.name), ql, 1, true)) then
       table.insert(out, e)
     end
@@ -311,6 +334,7 @@ searchBox:SetScript("OnTextChanged", function() offset = 0; RefreshList() end)
 hideLower:SetScript("OnClick", function() offset = 0; RefreshList() end)
 hidePassive:SetScript("OnClick", function() offset = 0; RefreshList() end)
 hideEffects:SetScript("OnClick", function() offset = 0; RefreshList() end)
+hideStances:SetScript("OnClick", function() offset = 0; RefreshList() end)
 
 f:SetScript("OnMouseWheel", function(self, delta)
   offset = offset - delta
