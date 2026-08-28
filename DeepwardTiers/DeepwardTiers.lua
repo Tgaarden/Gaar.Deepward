@@ -1233,15 +1233,10 @@ local function CreateUI()
     frame.refreshBtn:SetSize(30, 30)
     frame.refreshBtn:SetPoint("BOTTOMLEFT", right, "BOTTOMLEFT", 12, 12)
     frame.refreshBtn:SetFrameLevel(right:GetFrameLevel() + 20)
-    -- Ability_Hunter_Readiness = green circular "refresh" arrows; a guaranteed 3.3.5 icon (UI-RefreshButton
-    -- does NOT exist in 3.3.5, so the button was invisible before).
-    frame.refreshBtn:SetNormalTexture("Interface\\Icons\\Ability_Hunter_Readiness")
-    frame.refreshBtn:SetPushedTexture("Interface\\Icons\\Ability_Hunter_Readiness")
-    frame.refreshBtn:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
-    local rbBorder = frame.refreshBtn:CreateTexture(nil, "OVERLAY")   -- visible metal ring so it reads as a button
-    rbBorder:SetPoint("TOPLEFT", -2, 2)
-    rbBorder:SetPoint("BOTTOMRIGHT", 2, -2)
-    rbBorder:SetTexture("Interface\\Buttons\\UI-Quickslot2")
+    -- Custom refresh icon (orange circular arrows) shipped with the addon as a 128px TGA.
+    frame.refreshBtn:SetNormalTexture("Interface\\AddOns\\DeepwardTiers\\refresh")
+    frame.refreshBtn:SetPushedTexture("Interface\\AddOns\\DeepwardTiers\\refresh")
+    frame.refreshBtn:SetHighlightTexture("Interface\\AddOns\\DeepwardTiers\\refresh", "ADD")
     frame.refreshBtn:SetScript("OnClick", function()
         SendCmd(".dwrefresh")
         RequestSync()
