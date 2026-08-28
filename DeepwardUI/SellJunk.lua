@@ -13,15 +13,19 @@ local PROTECTED = {
 }
 
 -- ---------------------------------------------------------------------------
--- User "keep" flags: ALT-click a bag item to mark its item type as never-sell. A small padlock shows on
+-- User "keep" flags: SHIFT-click a bag item to mark its item type as never-sell. A small padlock shows on
 -- the bottom-right of every stack of it, and "Sell All" skips it. Keyed by itemID (protects all copies),
--- persisted in DeepwardUIDB.noSell. Alt is used (not shift/ctrl) so it never clobbers the default bag
--- behaviours (shift = split/link, ctrl = dressing room).
+-- persisted PER CHARACTER (DeepwardUIDB, SavedVariablesPerCharacter) — for dual-spec gear. Shift is used
+-- (Alt/Option is unreliable on Mac); for the intended use (non-stackable GEAR) shift-click has no default
+-- bag action, so it stays clean. The always-locked key items (Hearthstone, Field Repair Bot) also show the
+-- padlock so it's visible that they're protected.
 -- ---------------------------------------------------------------------------
 DeepwardUIDB = DeepwardUIDB or {}
 if type(DeepwardUIDB.noSell) ~= "table" then DeepwardUIDB.noSell = {} end
 
-local function DwIsKept(itemId) return itemId and DeepwardUIDB.noSell[itemId] == true end
+local function DwIsKept(itemId)   -- user flag OR an always-protected key item
+    return itemId and (DeepwardUIDB.noSell[itemId] == true or PROTECTED[itemId] == true)
+end
 
 -- Draw/refresh the padlock overlay on every slot of one container frame.
 local function DwUpdateKeepMarkers(frame)
@@ -47,16 +51,19 @@ local function DwUpdateKeepMarkers(frame)
 end
 hooksecurefunc("ContainerFrame_Update", DwUpdateKeepMarkers)
 
--- Alt-click a bag item -> toggle its keep flag. OnModifiedClick fires on any modified click; the default
--- handler ignores Alt, so acting on Alt here adds no conflict.
+-- Shift-click a bag item -> toggle its keep flag. Always-protected key items (HS/Repair Bot) can't be toggled.
 hooksecurefunc("ContainerFrameItemButton_OnModifiedClick", function(self, button)
-    if not IsAltKeyDown() or button ~= "LeftButton" then return end
+    if not IsShiftKeyDown() or button ~= "LeftButton" then return end
     local parent = self:GetParent()
     local bag, slot = parent and parent:GetID(), self:GetID()
     if not bag then return end
     local link = GetContainerItemLink(bag, slot)
     local id = link and tonumber(link:match("item:(%d+)"))
     if not id then return end
+    if PROTECTED[id] then
+        print("|cff33ff99Deepward:|r " .. link .. " is always kept (key item).")
+        return
+    end
     if DeepwardUIDB.noSell[id] then
         DeepwardUIDB.noSell[id] = nil
         print("|cff33ff99Deepward:|r " .. link .. " will be SOLD by Sell All.")
@@ -108,7 +115,7 @@ local function DeepwardSellAll()
 end
 
 StaticPopupDialogs["DEEPWARD_SELL_ALL"] = {
-    text = "Sell everything in all your bags?\n(Resources, Hearthstone, Repair Bot & Alt-click 'kept' items are skipped. Everything is free to buy back.)",
+    text = "Sell everything in all your bags?\n(Resources, Hearthstone, Repair Bot & Shift-click 'kept' items are skipped. Everything is free to buy back.)",
     button1 = YES,
     button2 = NO,
     OnAccept = DeepwardSellAll,
