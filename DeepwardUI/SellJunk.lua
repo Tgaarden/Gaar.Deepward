@@ -87,8 +87,20 @@ SlashCmdList["DWLOCK"] = function()
                 end
                 b.dwTest:Show()
                 print(("  red overlay on %sItem1 (shown=%s)"):format(nm, tostring(b.dwTest:IsShown())))
-            else
-                print(("  NO button %sItem1"):format(tostring(nm)))
+            end
+            -- decisive: put the KEEPLOCK texture on Item2. If the padlock shows -> texture is fine (bug is
+            -- detection); if Item2 is blank while Item1 is red -> the keeplock texture itself won't load.
+            local b2 = nm and _G[nm .. "Item2"]
+            if b2 then
+                if not b2.dwTest2 then
+                    local t = b2:CreateTexture(nil, "OVERLAY")
+                    t:SetAllPoints(b2)
+                    t:SetTexture("Interface\\AddOns\\DeepwardUI\\keeplock")
+                    b2.dwTest2 = t
+                end
+                b2.dwTest2:Show()
+                local tex = b2.dwTest2:GetTexture()
+                print(("  keeplock overlay on %sItem2 -> GetTexture()=%s"):format(nm, tostring(tex)))
             end
         end
     end
