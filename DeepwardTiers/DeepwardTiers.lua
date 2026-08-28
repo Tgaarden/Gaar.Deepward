@@ -811,6 +811,7 @@ local function RenderDetail(tier)
     frame.travelBtn:Hide()
     frame.playersBtn:Hide()
     frame.toLeaderBtn:Hide()
+    if frame.ascendJumpBtn then frame.ascendJumpBtn:Hide() end
     if frame.fillBotsChk then frame.fillBotsChk:Hide() end
 
     local PRIMARY_Y, LOWER_Y = 52, 12
@@ -819,6 +820,16 @@ local function RenderDetail(tier)
         btn:SetPoint("BOTTOM", frame.rightPanel, "BOTTOM", x, y)
         btn:Show()
     end
+
+    -- Ascend-to-tier (catch-up): viewing a HIGHER tier than you're on that your ACCOUNT has already reached.
+    local acctHigh = (DeepwardAccount and DeepwardAccount.highTier) or maxReached
+    if frame.ascendJumpBtn and not IsInInstance() and tier.id > CurrentTierId() and tier.id <= acctHigh then
+        frame.ascendJumpTier = tier.id
+        frame.ascendJumpLabel = (tier.id == 66) and "Tier 9 (Raid)" or ("Tier " .. tier.id)
+        frame.ascendJumpBtn:SetText("Ascend to tier")
+        placeAt(frame.ascendJumpBtn, 0, LOWER_Y)
+    end
+
     if canQueue then
         -- Find player group: centred in the right panel (current tier, outside an instance).
         if onCurrent and not IsInInstance() then
@@ -1386,6 +1397,24 @@ local function CreateUI()
     frame.travelBtn:SetScript("OnClick", function()
         if frame.travelTier then SendCmd(".movetier " .. frame.travelTier) end
         frame:Hide()
+    end)
+
+    -- Ascend-to-tier (catch-up): jump this char up to a tier the ACCOUNT has already reached. Confirmed
+    -- (permanent-ish jump: sets level + marks lower tiers cleared + grants DT). Fires ".dwascendto N".
+    -- Shown only when viewing a higher tier than you're on that your account has reached (see RenderDetail).
+    StaticPopupDialogs["DEEPWARD_ASCEND_TO"] = {
+        text = "Ascend this character to %s?\nYou'll be set to that tier's level, all lower tiers marked cleared, and given Deepward Tokens to buy gear from the cache. Your current gear is kept.",
+        button1 = YES, button2 = NO, timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = 3,
+        OnAccept = function()
+            if frame.ascendJumpTier then SendCmd(".dwascendto " .. frame.ascendJumpTier) end
+        end,
+    }
+    frame.ascendJumpBtn = CreateFrame("Button", nil, right, "UIPanelButtonTemplate")
+    frame.ascendJumpBtn:SetSize(232, 34)
+    frame.ascendJumpBtn:SetPoint("BOTTOM", right, "BOTTOM", 0, 16)   -- centred; positioned in RenderDetail
+    frame.ascendJumpBtn:Hide()
+    frame.ascendJumpBtn:SetScript("OnClick", function()
+        StaticPopup_Show("DEEPWARD_ASCEND_TO", frame.ascendJumpLabel or ("Tier " .. tostring(frame.ascendJumpTier)))
     end)
 
     UpdateRoleButtons()
