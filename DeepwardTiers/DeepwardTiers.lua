@@ -411,7 +411,7 @@ local function IsBossKilled(b)
 end
 
 -- Required clears per tier (N of M instances). Mirrors the server's tier.required_clears.
-local TIER_REQ = { [1]=1, [2]=1, [3]=1, [4]=2, [5]=1, [6]=1, [7]=2, [8]=4, [9]=3 }
+local TIER_REQ = { [1]=1, [2]=1, [3]=2, [4]=2, [5]=1, [6]=1, [7]=2, [8]=4, [9]=3 }
 local function TierReq(t) return (t and TIER_REQ[t.id]) or (t and t.dungeons and #t.dungeons) or 1 end
 
 -- How many of a tier's dungeons this char has cleared (live data).
