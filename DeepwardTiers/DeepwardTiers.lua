@@ -30,7 +30,7 @@ local TIERS = {
         gear = "Cloth starter set (tier-1 placeholder)",
         dungeons = {
             {
-                name = "Ragefire Chasm", cleared = false, map = 389,
+                name = "Ragefire Chasm", cleared = false, map = 389, seg = 1,
                 art = "Interface\\Glues\\LoadingScreens\\LoadScreenRagefireChasm",
                 loc = "Orgrimmar — Cleft of Shadow", range = "13–18",
                 desc = "A volcanic cleft beneath Orgrimmar, overrun by the Searing Blade cult and its elementals.",
@@ -43,14 +43,14 @@ local TIERS = {
         gear = "Tier-2 set (placeholder)",
         dungeons = {
             {
-                name = "Deadmines", cleared = false, map = 36,
+                name = "Deadmines", cleared = false, map = 36, seg = 2,
                 art = "Interface\\Glues\\LoadingScreens\\LoadScreenDeadmines",
                 loc = "Westfall — Moonbrook", range = "17–24",
                 desc = "The Defias Brotherhood's hideout in a flooded Westfall goldmine, ending at their ship.",
                 bosses = { {n="Rhahk'Zor",e=644}, {n="Cookie",e=645}, {n="Mr. Smite",e=646}, {n="Captain Greenskin",e=647}, {n="Gilnid",e=1763}, {n="Edwin VanCleef",e=639} },
             },
             {
-                name = "Wailing Caverns", cleared = false, map = 43,
+                name = "Wailing Caverns", cleared = false, map = 43, seg = 3,
                 art = "Interface\\Glues\\LoadingScreens\\LoadScreenWailingCaverns",
                 loc = "The Barrens", range = "17–24",
                 desc = "A living labyrinth in the Barrens where the Wailing Deviates guard the corrupted Fanglords.",
@@ -63,21 +63,21 @@ local TIERS = {
         gear = "Tier-3 set (placeholder)",
         dungeons = {
             {
-                name = "Shadowfang Keep", cleared = false, map = 33,
+                name = "Shadowfang Keep", cleared = false, map = 33, seg = 4,
                 art = "Interface\\Glues\\LoadingScreens\\LoadScreenShadowFangKeep",
                 loc = "Silverpine Forest", range = "22–30",
                 desc = "Arugal's haunted keep above Silverpine, prowled by worgen and the risen dead.",
                 bosses = { {n="Rethilgore",e=3914}, {n="Razorclaw the Butcher",e=3886}, {n="Baron Silverlaine",e=3887}, {n="Commander Springvale",e=4278}, {n="Odo the Blindwatcher",e=4279}, {n="Fenrus the Devourer",e=4274}, {n="Wolf Master Nandos",e=3927}, {n="Archmage Arugal",e=4275} },
             },
             {
-                name = "The Stockade", cleared = false, map = 34,
+                name = "The Stockade", cleared = false, map = 34, seg = 5,
                 art = "Interface\\Glues\\LoadingScreens\\LoadScreenStormwindStockade",
                 loc = "Stormwind City", range = "22–30",
                 desc = "Stormwind's prison, seized by the Defias inmates in a bloody riot.",
                 bosses = { {n="Targorr the Dread",e=1696}, {n="Kam Deepfury",e=1666}, {n="Hamhock",e=1717}, {n="Dextren Ward",e=1663}, {n="Bazil Thredd",e=1716} },
             },
             {
-                name = "Blackfathom Deeps", cleared = false, map = 48,
+                name = "Blackfathom Deeps", cleared = false, map = 48, seg = 6,
                 art = "Interface\\Glues\\LoadingScreens\\LoadScreenBlackfathomDeeps",
                 loc = "Ashenvale", range = "22–30",
                 desc = "A drowned Kaldorei temple beneath Ashenvale, claimed by the Twilight's Hammer and the naga.",
@@ -91,28 +91,28 @@ local TIERS = {
         gear = "Earned from drops + Sylvanas caches",
         dungeons = {
             {
-                name = "Scarlet Monastery: Graveyard", cleared = false, map = 189,
+                name = "Scarlet Monastery: Graveyard", cleared = false, map = 189, seg = 20,
                 art = "Interface\\Glues\\LoadingScreens\\LoadScreenScarletMonastery",
                 loc = "Tirisfal Glades", range = "28–38",
                 desc = "The Scarlet Crusade's graveyard wing, haunted by Bloodmage Thalnos.",
                 bosses = { {n="Interrogator Vishas",e=3983}, {n="Bloodmage Thalnos",e=4543} },
             },
             {
-                name = "Scarlet Monastery: Library", cleared = false, map = 189,
+                name = "Scarlet Monastery: Library", cleared = false, map = 189, seg = 21,
                 art = "Interface\\Glues\\LoadingScreens\\LoadScreenScarletMonastery",
                 loc = "Tirisfal Glades", range = "29–39",
                 desc = "The Crusade's library, guarded by Arcanist Doan.",
                 bosses = { {n="Houndmaster Loksey",e=3974}, {n="Arcanist Doan",e=6487} },
             },
             {
-                name = "Gnomeregan", cleared = false, map = 90,
+                name = "Gnomeregan", cleared = false, map = 90, seg = 22,
                 art = "Interface\\Glues\\LoadingScreens\\LoadScreenGnomeregan",
                 loc = "Dun Morogh", range = "29–38",
                 desc = "The irradiated gnome city, seized by troggs and Mekgineer Thermaplugg.",
                 bosses = { {n="Electrocutioner 6000",e=6235}, {n="Mekgineer Thermaplugg",e=7800} },
             },
             {
-                name = "Razorfen Kraul", cleared = false, map = 47,
+                name = "Razorfen Kraul", cleared = false, map = 47, seg = 23,
                 art = "Interface\\Glues\\LoadingScreens\\LoadScreenRazorfenKraul",
                 loc = "The Barrens", range = "30–40",
                 desc = "The quillboar warren of thorns, ruled by Charlga Razorflank.",
@@ -126,14 +126,14 @@ local TIERS = {
         gear = "Earned from drops + Sylvanas caches",
         dungeons = {
             {
-                name = "Scarlet Monastery: Armory", cleared = false, map = 189,
+                name = "Scarlet Monastery: Armory", cleared = false, map = 189, seg = 24,
                 art = "Interface\\Glues\\LoadingScreens\\LoadScreenScarletMonastery",
                 loc = "Tirisfal Glades", range = "34–44",
                 desc = "The Crusade's armory — Herod, the Scarlet Champion, holds the hall.",
                 bosses = { {n="Herod",e=3975} },
             },
             {
-                name = "Scarlet Monastery: Cathedral", cleared = false, map = 189,
+                name = "Scarlet Monastery: Cathedral", cleared = false, map = 189, seg = 25,
                 art = "Interface\\Glues\\LoadingScreens\\LoadScreenScarletMonastery",
                 loc = "Tirisfal Glades", range = "35–45",
                 desc = "The grand cathedral of Mograine and High Inquisitor Whitemane.",
@@ -147,14 +147,14 @@ local TIERS = {
         gear = "Earned from drops + Sylvanas caches",
         dungeons = {
             {
-                name = "Razorfen Downs", cleared = false, map = 129,
+                name = "Razorfen Downs", cleared = false, map = 129, seg = 26,
                 art = "Interface\\Glues\\LoadingScreens\\LoadScreenRazorfenDowns",
                 loc = "Thousand Needles", range = "37–47",
                 desc = "The undead quillboar necropolis, raised by Amnennar the Coldbringer.",
                 bosses = { {n="Mordresh Fire Eye",e=7357}, {n="Amnennar the Coldbringer",e=7358} },
             },
             {
-                name = "Uldaman", cleared = false, map = 70,
+                name = "Uldaman", cleared = false, map = 70, seg = 27,
                 art = "Interface\\Glues\\LoadingScreens\\LoadScreenUldaman",
                 loc = "Badlands", range = "41–51",
                 desc = "The titan vault beneath the Badlands, sealed by the guardian Archaedas.",
@@ -168,21 +168,21 @@ local TIERS = {
         gear = "Earned from drops + Sylvanas caches",
         dungeons = {
             {
-                name = "Zul'Farrak", cleared = false, map = 209,
+                name = "Zul'Farrak", cleared = false, map = 209, seg = 28,
                 art = "Interface\\Glues\\LoadingScreens\\LoadScreenZulFarrak",
                 loc = "Tanaris", range = "44–54",
                 desc = "The Sandfury troll city in Tanaris, ruled by Chief Ukorz Sandscalp.",
                 bosses = { {n="Theka the Martyr",e=7272}, {n="Witch Doctor Zum'rah",e=7271}, {n="Hydromancer Velratha",e=7795}, {n="Chief Ukorz Sandscalp",e=7267} },
             },
             {
-                name = "Maraudon", cleared = false, map = 349,
+                name = "Maraudon", cleared = false, map = 349, seg = 29,
                 art = "Interface\\Glues\\LoadingScreens\\LoadScreenMaraudon",
                 loc = "Desolace", range = "46–55",
                 desc = "The petrified caverns under Desolace, home of Princess Theradras.",
                 bosses = { {n="Celebras the Cursed",e=12225}, {n="Landslide",e=12203}, {n="Princess Theradras",e=12201} },
             },
             {
-                name = "Sunken Temple", cleared = false, map = 109,
+                name = "Sunken Temple", cleared = false, map = 109, seg = 30,
                 art = "Interface\\Glues\\LoadingScreens\\LoadScreenSunkenTemple",
                 loc = "Swamp of Sorrows", range = "50–60",
                 desc = "The Temple of Atal'Hakkar in the Swamp of Sorrows — the Atal'ai and Jammal'an the Prophet.",
@@ -196,42 +196,42 @@ local TIERS = {
         gear = "Earned from drops + Sylvanas caches",
         dungeons = {
             {
-                name = "Blackrock Depths", cleared = false, map = 230,
+                name = "Blackrock Depths", cleared = false, map = 230, seg = 31,
                 art = "Interface\\Glues\\LoadingScreens\\LoadScreenBlackrockDepths",
                 loc = "Blackrock Mountain", range = "52–60",
                 desc = "The Dark Iron dwarf city deep in Blackrock Mountain — Emperor Dagran Thaurissan's seat.",
                 bosses = { {n="High Interrogator Gerstahn",e=9018}, {n="Magmus",e=9938}, {n="Emperor Dagran Thaurissan",e=9019} },
             },
             {
-                name = "Lower Blackrock Spire", cleared = false, map = 229,
+                name = "Lower Blackrock Spire", cleared = false, map = 229, seg = 32,
                 art = "Interface\\Glues\\LoadingScreens\\LoadScreenBlackRockSpire",
                 loc = "Blackrock Spire", range = "55–60",
                 desc = "The orc warrens of the Spinemaw, held by Overlord Wyrmthalak.",
                 bosses = { {n="Highlord Omokk",e=9196}, {n="Shadow Hunter Vosh'gajin",e=9236}, {n="War Master Voone",e=9237}, {n="Overlord Wyrmthalak",e=9568} },
             },
             {
-                name = "Upper Blackrock Spire", cleared = false, map = 229,
+                name = "Upper Blackrock Spire", cleared = false, map = 229, seg = 33,
                 art = "Interface\\Glues\\LoadingScreens\\LoadScreenBlackRockSpire",
                 loc = "Blackrock Spire", range = "55–60",
                 desc = "Nefarian's black dragonspawn stronghold atop the Spire — General Drakkisath commands.",
                 bosses = { {n="Pyroguard Emberseer",e=9816}, {n="The Beast",e=10430}, {n="General Drakkisath",e=10363} },
             },
             {
-                name = "Scholomance", cleared = false, map = 289,
+                name = "Scholomance", cleared = false, map = 289, seg = 34,
                 art = "Interface\\Glues\\LoadingScreens\\LoadScreenScholomance",
                 loc = "Western Plaguelands", range = "56–60",
                 desc = "The necromantic academy beneath Caer Darrow, run by Darkmaster Gandling.",
                 bosses = { {n="Jandice Barov",e=10503}, {n="Ras Frostwhisper",e=10508}, {n="Rattlegore",e=11622}, {n="Darkmaster Gandling",e=1853} },
             },
             {
-                name = "Stratholme", cleared = false, map = 329,
+                name = "Stratholme", cleared = false, map = 329, seg = 35,
                 art = "Interface\\Glues\\LoadingScreens\\LoadScreenStratholme",
                 loc = "Eastern Plaguelands", range = "56–60",
                 desc = "The plagued city — the Scourge's Baron Rivendare holds the undead side.",
                 bosses = { {n="Magistrate Barthilas",e=10435}, {n="Nerub'enkan",e=10437}, {n="Maleki the Pallid",e=10438}, {n="Baroness Anastari",e=10436}, {n="Baron Rivendare",e=10440} },
             },
             {
-                name = "Dire Maul", cleared = false, map = 429,
+                name = "Dire Maul", cleared = false, map = 429, seg = 36,
                 art = "Interface\\Glues\\LoadingScreens\\LoadScreenDireMaul",
                 loc = "Feralas", range = "55–60",
                 desc = "The ruined Highborne city in Feralas — the ogre King Gordok rules the north.",
@@ -247,7 +247,7 @@ local TIERS = {
         gear = "Earned from drops (50% + floor)",
         dungeons = {
             {
-                name = "Molten Core", cleared = false, map = 409,
+                name = "Molten Core", cleared = false, map = 409, seg = 7,
                 art = "Interface\\Glues\\LoadingScreens\\LoadScreenMoltenCore",
                 loc = "Blackrock Depths — the Molten Core", range = "60 (raid)",
                 desc = "The firelord Ragnaros' domain deep beneath Blackrock Mountain — the 40-man raid, down-tuned for a 5-man party.",
@@ -258,7 +258,7 @@ local TIERS = {
                 },
             },
             {
-                name = "Zul'Gurub", cleared = false, map = 309,
+                name = "Zul'Gurub", cleared = false, map = 309, seg = 8,
                 art = "Interface\\Glues\\LoadingScreens\\LoadScreenZulGurub",
                 loc = "Stranglethorn Vale", range = "60 (raid)",
                 desc = "The troll city of the Gurubashi in Stranglethorn — the blood god Hakkar and his high priests, down-tuned for a 5-man party.",
@@ -269,7 +269,7 @@ local TIERS = {
                 },
             },
             {
-                name = "Blackwing Lair", cleared = false, map = 469,
+                name = "Blackwing Lair", cleared = false, map = 469, seg = 9,
                 art = "Interface\\Glues\\LoadingScreens\\LoadScreenBlackwingLair",
                 loc = "Blackrock Spire — Blackwing Lair", range = "60 (raid)",
                 desc = "Nefarian's lair atop Blackrock Spire — the black dragonflight's experiments, down-tuned for a 5-man party.",
@@ -295,7 +295,7 @@ end
 
 -- ---------------------------------------------------------------------------
 -- Live data from the server (addon message, "DEEPWARD" prefix). Payload:
---   "T=<current_tier>;M=<max_tier>;C=<clearedMap1,clearedMap2,...>"
+--   "T=<current_tier>;M=<max_tier>;C=<clearedSeg1,clearedSeg2,...>"  (C = cleared SEGMENT ids)
 -- Pushed on login / clear / tier change, and on ".dwsync" (fired when the panel opens).
 -- Until the first push, the panel falls back to level-derived values.
 -- ---------------------------------------------------------------------------
@@ -372,16 +372,16 @@ end
 -- The server validates the map belongs to your current tier; an omitted map auto-routes to the
 -- first løype you haven't cleared. When a CUSTOM bot comp is set (not Auto) and it fills the free
 -- slots exactly, it's appended as "<t>-<h>-<d>"; otherwise the server auto-fills the roles.
-local function EnterDungeon(map)
+local function EnterDungeon(seg)
     EnsureDB()
     local role = DeepwardTiersDB.role or "dps"
     local cmd = ".enter " .. role
     local slots = BotSlotCount()
     local c = DeepwardTiersDB.botComp
     if (not DeepwardTiersDB.botAuto) and c and slots > 0 and (c.t + c.h + c.d == slots) then
-        cmd = cmd .. " " .. (map or 0) .. " " .. c.t .. "-" .. c.h .. "-" .. c.d
-    elseif map then
-        cmd = cmd .. " " .. map
+        cmd = cmd .. " " .. (seg or 0) .. " " .. c.t .. "-" .. c.h .. "-" .. c.d
+    elseif seg then
+        cmd = cmd .. " " .. seg   -- SEGMENT id (server routes per-wing; 0/nil = auto-route)
     end
     SendCmd(cmd)
 end
@@ -400,9 +400,10 @@ local function CurrentTierId()
     return cur
 end
 
--- A dungeon is cleared when the server has reported its map as cleared for this char.
+-- A dungeon is cleared when the server has reported its SEGMENT as cleared for this char (per-wing:
+-- SM/BRS wings share a map, so clear-status must key on the segment, not the map).
 local function IsDungeonCleared(d)
-    return DeepwardLive and DeepwardLive.cleared and d and DeepwardLive.cleared[d.map] or false
+    return DeepwardLive and DeepwardLive.cleared and d and DeepwardLive.cleared[d.seg] or false
 end
 
 -- A boss (a {n=name, e=entry} entry) is slain when the server reported its entry as killed.
@@ -419,7 +420,7 @@ local function CountClearedDungeons(t)
     if not (DeepwardLive and DeepwardLive.cleared) or not t or not t.dungeons then return 0 end
     local n = 0
     for _, d in ipairs(t.dungeons) do
-        if DeepwardLive.cleared[d.map] then n = n + 1 end
+        if DeepwardLive.cleared[d.seg] then n = n + 1 end
     end
     return n
 end
@@ -786,7 +787,7 @@ local function RenderDetail(tier)
     end
 
     SetPanelArt(sel and sel.art or nil)
-    frame.selectedMap = sel and sel.map or nil
+    frame.selectedSeg = sel and sel.seg or nil
 
     -- Dungeon selector buttons — shown for ANY tier with more than one løype, whatever tier you're
     -- on (browse/preview is always allowed; entering is still gated to your current tier via the
@@ -1401,7 +1402,7 @@ local function CreateUI()
             print("|cff33ff99Deepward:|r Use your Hearthstone to leave — it is your only way out.")
             return
         end
-        EnterDungeon(frame.selectedMap)   -- the currently selected dungeon (nil -> server auto-routes)
+        EnterDungeon(frame.selectedSeg)   -- the currently selected dungeon's segment (nil -> auto-route)
         frame:Hide()
     end)
 
