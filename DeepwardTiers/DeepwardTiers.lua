@@ -441,6 +441,51 @@ local tierButtons = {}
 local selectedId = 1
 local selectedDungeonIdx = 1   -- which dungeon of the selected tier is shown (bg + info + Enter target)
 
+local function TierExists(id)
+    for _, t in ipairs(TIERS) do if t.id == id then return true end end
+    return false
+end
+
+-- Persist the panel's current view (tier + dungeon) so the hub reopens where you left off.
+local function DwSaveView()
+    if type(DeepwardTiersDB) ~= "table" then return end
+    DeepwardTiersDB.lastTier = selectedId
+    DeepwardTiersDB.lastDungeonIdx = selectedDungeonIdx
+end
+
+-- Which tier+dungeon matches the instance you're standing in (or nil if not in a Deepward instance).
+-- Matches GetInstanceInfo()'s localized name to a tier dungeon name (leading "The " stripped both sides,
+-- plus a few aliases where the instance name differs), preferring a dungeon on your CURRENT tier when
+-- several share a name (e.g. LBRS/UBRS both read "Blackrock Spire").
+local DW_INST_ALIAS = {
+    ["the deadmines"]             = { "deadmines" },
+    ["the temple of atal'hakkar"] = { "sunken temple" },
+    ["scarlet monastery"]         = { "graveyard", "library", "armory", "cathedral" },
+    ["blackrock spire"]           = { "lower blackrock spire", "upper blackrock spire" },
+}
+local function DwCurrentDungeon()
+    if not IsInInstance() then return nil end
+    local name = GetInstanceInfo and GetInstanceInfo() or nil
+    if not name then return nil end
+    local key = name:lower()
+    local wants = DW_INST_ALIAS[key] or { (key:gsub("^the ", "")) }
+    local function matches(dn)
+        dn = (dn or ""):lower():gsub("^the ", "")
+        for _, w in ipairs(wants) do if dn == w then return true end end
+        return false
+    end
+    local cands = {}
+    for _, t in ipairs(TIERS) do
+        for di, d in ipairs(t.dungeons or {}) do
+            if matches(d.name) then cands[#cands + 1] = { tid = t.id, di = di } end
+        end
+    end
+    if #cands == 0 then return nil end
+    local cur = CurrentTierId()
+    for _, c in ipairs(cands) do if c.tid == cur then return c.tid, c.di end end
+    return cands[1].tid, cands[1].di
+end
+
 -- Bot-comp editor + live roster (idea #6). Forward-declared so CreateUI's button closures can call them.
 -- Custom Deepward role medallions: three separate icons shipped with the addon (pre-cropped by Thomas,
 -- converted to power-of-two 32-bit TGA). One texture per role — no atlas / TexCoord carving. Shared by
@@ -765,6 +810,7 @@ local function RenderDetail(tier)
             if i == selectedDungeonIdx then db:LockHighlight() else db:UnlockHighlight() end
             db:SetScript("OnClick", function()
                 selectedDungeonIdx = i
+                DwSaveView()                           -- remember the picked dungeon for the hub
                 RenderDetail(tier)                     -- swap background + info to the picked dungeon
             end)
             db:SetScript("OnEnter", nil)
@@ -874,9 +920,10 @@ local function RenderDetail(tier)
     end
 end
 
-local function SelectTier(id)
+local function SelectTier(id, dungeonIdx)
     selectedId = id
-    selectedDungeonIdx = 1   -- start each tier on its first dungeon
+    selectedDungeonIdx = dungeonIdx or 1   -- default: the tier's first dungeon
+    DwSaveView()
     RefreshTierLabels()      -- keep (current)/checkmarks in sync with live tier
     UpdateSummary()          -- keep the top "Current tier: N" line in sync too
     for _, b in ipairs(tierButtons) do
@@ -1457,16 +1504,51 @@ local function Toggle()
     EnsureDB()
     CreateUI()
     if frame:IsShown() then
+        DwSaveView()                        -- remember where we were before closing
         frame:Hide()
     else
         RequestSync()                       -- ask the server for fresh tier/clear state + roster
-        SelectTier(CurrentTierId())
+        local tid, di = DwCurrentDungeon()
+        if tid then
+            SelectTier(tid, di)             -- inside a Deepward instance -> open straight to it
+        elseif DeepwardTiersDB.lastTier and TierExists(DeepwardTiersDB.lastTier) then
+            SelectTier(DeepwardTiersDB.lastTier, DeepwardTiersDB.lastDungeonIdx or 1)   -- hub: restore last view
+        else
+            SelectTier(CurrentTierId())
+        end
         UpdateEnterButton()
         RenderComp()                        -- slot count reflects current party size
         RenderRoster()
         frame:Show()
     end
 end
+
+-- Auto-open the panel straight onto the instance you just walked into (a Deepward dungeon/raid). Fires
+-- only on the TRANSITION into a new instance (tracked by name) so it doesn't reopen on every sub-zone or
+-- if you deliberately closed it while inside. In the hub it does nothing (Toggle restores the last view).
+local dwLastAutoInst
+local autoOpener = CreateFrame("Frame")
+autoOpener:RegisterEvent("PLAYER_ENTERING_WORLD")
+autoOpener:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+autoOpener:SetScript("OnEvent", function()
+    local tid, di = DwCurrentDungeon()
+    local inst = tid and GetInstanceInfo and GetInstanceInfo() or nil
+    if tid and inst then
+        if inst ~= dwLastAutoInst then
+            dwLastAutoInst = inst
+            EnsureDB()
+            CreateUI()
+            RequestSync()
+            SelectTier(tid, di)
+            UpdateEnterButton()
+            RenderComp()
+            RenderRoster()
+            frame:Show()
+        end
+    else
+        dwLastAutoInst = nil                 -- left the instance -> allow auto-open next time
+    end
+end)
 
 -- Matchmaker status from the server ("Q=..."). Toggles the Play players button into a live "Leave Queue"
 -- countdown, and resets it when the match forms / is cancelled. Global so the addon-message handler finds it.
