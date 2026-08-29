@@ -1503,6 +1503,13 @@ function DeepwardAlertHide(key)
     DwLayoutAlerts()
 end
 
+-- Auto-size an alert to its (single-line, non-wrapping) text so the label never wraps.
+local function DwSizeAlert(a)
+    local w = 12 + (a.text:GetStringWidth() or 0) + 14
+    if a.btn:IsShown() then w = w + 8 + a.btn:GetWidth() end
+    a:SetWidth(math.max(220, math.ceil(w)))
+end
+
 local function DwMakeAlert()
     local f = CreateFrame("Frame", nil, UIParent)
     f:SetSize(320, 40)
@@ -1516,6 +1523,7 @@ local function DwMakeAlert()
     f:SetBackdropColor(0, 0, 0, 0.85)
     f.text = f:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     f.text:SetPoint("LEFT", 12, 0)
+    f.text:SetJustifyH("LEFT")   -- single line, no width cap -> never wraps
     f.btn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
     f.btn:SetSize(64, 22)
     f.btn:SetPoint("RIGHT", -8, 0)
@@ -1524,6 +1532,7 @@ local function DwMakeAlert()
         local left = self.deadline - GetTime()
         if left < 0 then left = 0 end
         self.text:SetText(self.label .. (" \226\128\148 %ds"):format(math.ceil(left)))
+        DwSizeAlert(self)
     end)
     return f
 end
@@ -1545,12 +1554,11 @@ function DeepwardAlert(key, opts)
             if fn then fn() end
         end)
         a.btn:Show()
-        a.text:SetWidth(320 - 64 - 30)   -- leave room for the button
     else
         a.btn:Hide()
-        a.text:SetWidth(320 - 24)
     end
     if not a.deadline then a.text:SetText(a.label) end   -- static text (OnUpdate handles the timed case)
+    DwSizeAlert(a)
     a:Show()
     DwLayoutAlerts()
 end
@@ -1559,23 +1567,27 @@ end
 local function HideQueueBanner()
     DeepwardAlertHide("queue")
 end
--- Role slots for the queue banner: Tank · DPS · DPS · DPS · Healer, each with a green check when
--- filled and a grey marker when still open. tanks/heals/dps are the server's filled-role counts.
+-- Role slots for the queue banner: Tank · DPS · DPS · DPS · Healer, all on ONE line, shown as the LFG
+-- role ICONS (not words) with a green check when filled and a grey "waiting" marker when still open.
+-- tanks/heals/dps are the server's filled-role counts (Q=searching:left:tanks:heals:dps).
 local Q_CHECK = "|TInterface\\RaidFrame\\ReadyCheck-Ready:14:14:0:-1|t"
 local Q_OPEN  = "|TInterface\\RaidFrame\\ReadyCheck-Waiting:14:14:0:-1|t"
-local function qslot(name, color, filled)
-    return (filled and Q_CHECK or Q_OPEN) .. (filled and ("|cff" .. color .. name .. "|r") or ("|cff707070" .. name .. "|r"))
+local RI_TANK = "|TInterface\\LFGFrame\\UI-LFG-ICON-ROLES:16:16:0:0:64:64:0:19:22:41|t"
+local RI_HEAL = "|TInterface\\LFGFrame\\UI-LFG-ICON-ROLES:16:16:0:0:64:64:20:39:1:20|t"
+local RI_DPS  = "|TInterface\\LFGFrame\\UI-LFG-ICON-ROLES:16:16:0:0:64:64:20:39:22:41|t"
+local function qslot(icon, filled)
+    return (filled and Q_CHECK or Q_OPEN) .. icon
 end
 local function ShowQueueBanner(left, tanks, heals, dps)
     tanks, heals, dps = tonumber(tanks) or 0, tonumber(heals) or 0, tonumber(dps) or 0
     local slots = {
-        qslot("Tank", "4080ff", tanks >= 1),
-        qslot("DPS", "ff8040", dps >= 1),
-        qslot("DPS", "ff8040", dps >= 2),
-        qslot("DPS", "ff8040", dps >= 3),
-        qslot("Heal", "40ff40", heals >= 1),
+        qslot(RI_TANK, tanks >= 1),
+        qslot(RI_DPS, dps >= 1),
+        qslot(RI_DPS, dps >= 2),
+        qslot(RI_DPS, dps >= 3),
+        qslot(RI_HEAL, heals >= 1),
     }
-    local label = "|cffffd200Deepward:|r s\195\184ker gruppe   " .. table.concat(slots, "  ")
+    local label = "|cffffd200Deepward:|r s\195\184ker gruppe   " .. table.concat(slots, " ")
     DeepwardAlert("queue", {
         label = label,
         deadline = GetTime() + (tonumber(left) or 0),
