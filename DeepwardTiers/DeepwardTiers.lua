@@ -239,20 +239,44 @@ local TIERS = {
             },
         },
     },
-    -- Tier 9 (Raid) comes later. Tier 66 below is the current Molten Core capstone.
+    -- Tier 9 (Raid) — the level-60 end-game: Molten Core + Zul'Gurub + Blackwing Lair, merged into ONE
+    -- tier. Down-tuned for 5-man, trash restored, dungeon-style waygates (teleporter appears after each
+    -- boss kill). Loot = 50% drops + the >=5 floor. Repeatable.
     {
-        id = 66, name = "Molten Core", level = 60, wipeBudget = 3,
-        gear = "Level 60 raid capstone (proof-of-concept)",
+        id = 9, name = "Molten Core / Zul'Gurub / Blackwing Lair", level = 60, wipeBudget = 3,
+        gear = "Earned from drops (50% + floor)",
         dungeons = {
             {
                 name = "Molten Core", cleared = false, map = 409,
                 art = "Interface\\Glues\\LoadingScreens\\LoadScreenMoltenCore",
-                loc = "Blackrock Depths — the Molten Core", range = "60 (5-man capstone)",
-                desc = "The firelord Ragnaros' domain deep beneath Blackrock Mountain — a 40-man raid, run here as a level-60 5-man capstone (bosses NOT down-tuned yet — brutal).",
+                loc = "Blackrock Depths — the Molten Core", range = "60 (raid)",
+                desc = "The firelord Ragnaros' domain deep beneath Blackrock Mountain — the 40-man raid, down-tuned for a 5-man party.",
                 bosses = {
                     {n="Lucifron",e=12118}, {n="Magmadar",e=11982}, {n="Gehennas",e=12259}, {n="Garr",e=12057},
                     {n="Baron Geddon",e=12056}, {n="Shazzrah",e=12264}, {n="Sulfuron Harbinger",e=12098},
                     {n="Golemagg the Incinerator",e=11988}, {n="Majordomo Executus",e=12018}, {n="Ragnaros",e=11502},
+                },
+            },
+            {
+                name = "Zul'Gurub", cleared = false, map = 309,
+                art = "Interface\\Glues\\LoadingScreens\\LoadScreenZulGurub",
+                loc = "Stranglethorn Vale", range = "60 (raid)",
+                desc = "The troll city of the Gurubashi in Stranglethorn — the blood god Hakkar and his high priests, down-tuned for a 5-man party.",
+                bosses = {
+                    {n="High Priest Venoxis",e=14507}, {n="High Priestess Jeklik",e=14517}, {n="High Priestess Mar'li",e=14510},
+                    {n="Bloodlord Mandokir",e=11382}, {n="High Priest Thekal",e=14509}, {n="High Priestess Arlokk",e=14515},
+                    {n="Jin'do the Hexxer",e=11380}, {n="Hakkar",e=14834},
+                },
+            },
+            {
+                name = "Blackwing Lair", cleared = false, map = 469,
+                art = "Interface\\Glues\\LoadingScreens\\LoadScreenBlackwingLair",
+                loc = "Blackrock Spire — Blackwing Lair", range = "60 (raid)",
+                desc = "Nefarian's lair atop Blackrock Spire — the black dragonflight's experiments, down-tuned for a 5-man party.",
+                bosses = {
+                    {n="Razorgore the Untamed",e=12435}, {n="Vaelastrasz the Corrupt",e=13020}, {n="Broodlord Lashlayer",e=12017},
+                    {n="Firemaw",e=11983}, {n="Ebonroc",e=14601}, {n="Flamegor",e=11981},
+                    {n="Chromaggus",e=14020}, {n="Nefarian",e=11583},
                 },
             },
         },
@@ -387,7 +411,7 @@ local function IsBossKilled(b)
 end
 
 -- Required clears per tier (N of M instances). Mirrors the server's tier.required_clears.
-local TIER_REQ = { [1]=1, [2]=1, [3]=1, [4]=2, [5]=1, [6]=1, [7]=2, [8]=4, [66]=1 }
+local TIER_REQ = { [1]=1, [2]=1, [3]=1, [4]=2, [5]=1, [6]=1, [7]=2, [8]=4, [9]=3 }
 local function TierReq(t) return (t and TIER_REQ[t.id]) or (t and t.dungeons and #t.dungeons) or 1 end
 
 -- How many of a tier's dungeons this char has cleared (live data).
@@ -474,8 +498,8 @@ UpdateJourney = function()
         if DeepwardLive.killed  then for _ in pairs(DeepwardLive.killed)  do kills = kills + 1 end end
         if DeepwardLive.cleared then for _ in pairs(DeepwardLive.cleared) do insts = insts + 1 end end
     end
-    -- tier label: the capstone raid tier (66) reads as "9 (Raid)"
-    local function tlabel(n) if n == 66 then return "9 (Raid)" else return tostring(n) end end
+    -- tier label: the raid tier (9) reads as "9 (Raid)"
+    local function tlabel(n) if n == 9 then return "9 (Raid)" else return tostring(n) end end
 
     -- This character (compact: two stats per line to fit the fixed left-column band).
     local s = ("|cffffd100Denne karakteren|r\n|cffffd100Tier:|r %d   |cffffd100Level:|r %d\n|cffffd100Bosser:|r %d   |cffffd100Instanser:|r %d")
@@ -563,7 +587,7 @@ local function SetTierLabel(b)
     else
         tag = ""
     end
-    b.label:SetText(("Tier %d%s"):format((b.tierId == 66) and 9 or b.tierId, tag))   -- 66 = the raid capstone, shown as Tier 9
+    b.label:SetText(("Tier %d%s"):format(b.tierId, tag))
 end
 
 local function RefreshTierLabels()
@@ -652,7 +676,7 @@ local function RenderDetail(tier)
     local roleBtnY   = twoRows and 78 or 48   -- role cluster sits low (instance selectors moved to the top now)
     local roleLabelY = roleBtnY + 46   -- "Your role:" sits clear ABOVE the role icons (they're ~40px tall)
 
-    local dispId = (tier.id == 66) and 9 or tier.id   -- 66 = the raid capstone, shown as Tier 9
+    local dispId = tier.id
     frame.detailTitle:SetText(sel and ("Tier %d — %s"):format(dispId, sel.name) or ("Tier %d — %s"):format(dispId, tier.name))
 
     -- Clear-status badge (prominent, under the title).
@@ -825,7 +849,7 @@ local function RenderDetail(tier)
     local acctHigh = (DeepwardAccount and DeepwardAccount.highTier) or maxReached
     if frame.ascendJumpBtn and not IsInInstance() and tier.id > CurrentTierId() and tier.id <= acctHigh then
         frame.ascendJumpTier = tier.id
-        frame.ascendJumpLabel = (tier.id == 66) and "Tier 9 (Raid)" or ("Tier " .. tier.id)
+        frame.ascendJumpLabel = (tier.id == 9) and "Tier 9 (Raid)" or ("Tier " .. tier.id)
         frame.ascendJumpBtn:SetText("Ascend to tier")
         placeAt(frame.ascendJumpBtn, 0, LOWER_Y)
     end
@@ -1535,13 +1559,23 @@ end
 local function HideQueueBanner()
     DeepwardAlertHide("queue")
 end
-local function ShowQueueBanner(left, have, full)
-    local label
-    if have and full then
-        label = ("|cffffd200Deepward:|r s\195\184ker gruppe  (%s/%s)"):format(have, full)
-    else
-        label = "|cffffd200Deepward:|r s\195\184ker gruppe"
-    end
+-- Role slots for the queue banner: Tank · DPS · DPS · DPS · Healer, each with a green check when
+-- filled and a grey marker when still open. tanks/heals/dps are the server's filled-role counts.
+local Q_CHECK = "|TInterface\\RaidFrame\\ReadyCheck-Ready:14:14:0:-1|t"
+local Q_OPEN  = "|TInterface\\RaidFrame\\ReadyCheck-Waiting:14:14:0:-1|t"
+local function qslot(name, color, filled)
+    return (filled and Q_CHECK or Q_OPEN) .. (filled and ("|cff" .. color .. name .. "|r") or ("|cff707070" .. name .. "|r"))
+end
+local function ShowQueueBanner(left, tanks, heals, dps)
+    tanks, heals, dps = tonumber(tanks) or 0, tonumber(heals) or 0, tonumber(dps) or 0
+    local slots = {
+        qslot("Tank", "4080ff", tanks >= 1),
+        qslot("DPS", "ff8040", dps >= 1),
+        qslot("DPS", "ff8040", dps >= 2),
+        qslot("DPS", "ff8040", dps >= 3),
+        qslot("Heal", "40ff40", heals >= 1),
+    }
+    local label = "|cffffd200Deepward:|r s\195\184ker gruppe   " .. table.concat(slots, "  ")
     DeepwardAlert("queue", {
         label = label,
         deadline = GetTime() + (tonumber(left) or 0),
@@ -1551,10 +1585,10 @@ end
 
 function UpdateQueueUI(state)
     -- Drive the top-of-screen banner FIRST — it must work even if the panel frame isn't built/open.
-    local left, have, full = state:match("^searching:(%d+):(%d+):(%d+)")
+    local left, tanks, heals, dps = state:match("^searching:(%d+):(%d+):(%d+):(%d+)")
     if not left then left = state:match("^searching:(%d+)") end
     if left then
-        ShowQueueBanner(left, have, full)
+        ShowQueueBanner(left, tanks, heals, dps)
     else
         HideQueueBanner()
     end
