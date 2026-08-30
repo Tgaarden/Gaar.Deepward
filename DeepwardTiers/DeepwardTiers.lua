@@ -489,6 +489,12 @@ local function DwCurrentDungeon()
         end
     end
     if #cands == 0 then return nil end
+    -- respect the wing you navigated to: GetInstanceInfo can't tell SM/BRS wings apart (all report the
+    -- same instance name), so if the current panel selection is already one of this instance's wings, keep
+    -- it rather than snapping to the first wing.
+    for _, c in ipairs(cands) do
+        if c.tid == selectedId and c.di == selectedDungeonIdx then return c.tid, c.di end
+    end
     local cur = CurrentTierId()
     for _, c in ipairs(cands) do if c.tid == cur then return c.tid, c.di end end
     return cands[1].tid, cands[1].di
@@ -1760,7 +1766,8 @@ liveFrame:SetScript("OnEvent", function(_, event, prefix, message)
         if UpdateBadge then UpdateBadge() end
         if UpdateJourney then UpdateJourney() end
         if frame and frame:IsShown() then
-            SelectTier(selectedId or CurrentTierId())
+            SelectTier(selectedId or CurrentTierId(), selectedDungeonIdx)   -- keep the chosen dungeon (a live
+            -- sync response must not snap the view back to the tier's first instance)
         end
     else
         -- party/raid changed -> bot-slot count changed: refresh the comp, and re-pull the roster
