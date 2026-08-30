@@ -434,6 +434,11 @@ local function IsTierClearedLive(t)
     return CountClearedDungeons(t) >= TierReq(t)
 end
 
+local function TierById(id) for _, t in ipairs(TIERS) do if t.id == id then return t end end end
+-- A tier BELOW your current tier that you did NOT clear = "skipped": you ascended past it, so it shows
+-- greyed as skipped rather than falsely "cleared" (an ascended alt hasn't done or killed anything there).
+local function IsTierSkipped(t) return t and t.id < CurrentTierId() and not IsTierClearedLive(t) end
+
 -- ---------------------------------------------------------------------------
 -- UI (built lazily on first open)
 -- ---------------------------------------------------------------------------
@@ -642,7 +647,11 @@ local function SetTierLabel(b)
         -- current tier: a bright yellow raid-target star marker (no "(current)" text per request)
         tag = "  |TInterface\\TargetingFrame\\UI-RaidTargetingIcons:20:20:0:0:256:256:0:64:0:64|t"
     elseif b.tierId < cur then
-        tag = "  |TInterface\\RaidFrame\\ReadyCheck-Ready:18:18:0:0|t"   -- completed
+        if IsTierClearedLive(TierById(b.tierId)) then
+            tag = "  |TInterface\\RaidFrame\\ReadyCheck-Ready:18:18:0:0|t"     -- cleared
+        else
+            tag = "  |TInterface\\RaidFrame\\ReadyCheck-Waiting:18:18:0:0|t"   -- skipped (ascended past it)
+        end
     else
         tag = ""
     end
@@ -736,6 +745,7 @@ local function RenderDetail(tier)
     local roleLabelY = roleBtnY + 46   -- "Your role:" sits clear ABOVE the role icons (they're ~40px tall)
 
     local dispId = tier.id
+    local tierSkipped = IsTierSkipped(tier)   -- below your current tier and not cleared -> ascended past it
     frame.detailTitle:SetText(sel and ("Tier %d — %s"):format(dispId, sel.name) or ("Tier %d — %s"):format(dispId, tier.name))
 
     -- Clear-status badge (prominent, under the title).
@@ -745,6 +755,8 @@ local function RenderDetail(tier)
             if sel.bosses then for _, b in ipairs(sel.bosses) do if IsBossKilled(b) then kn = kn + 1 end end end
             if IsDungeonCleared(sel) then
                 frame.statusBadge:SetText("|cff40ff40STATUS: Cleared|r")
+            elseif tierSkipped then
+                frame.statusBadge:SetText("|cffb0b0b0STATUS: Skipped|r")
             else
                 frame.statusBadge:SetText(("|cffff6060STATUS: Not Cleared (%d/%d)|r"):format(kn, tot))
             end
@@ -767,7 +779,8 @@ local function RenderDetail(tier)
     table.insert(lines, ("|cffffd100Gear:|r %s"):format(tier.gear))
     table.insert(lines, " ")
     if sel then
-        local mark = IsDungeonCleared(sel) and "|cff40ff40cleared|r" or "|cffff8040not cleared|r"
+        local mark = IsDungeonCleared(sel) and "|cff40ff40cleared|r"
+                  or (tierSkipped and "|cffb0b0b0skipped|r" or "|cffff8040not cleared|r")
         table.insert(lines, ("|cffffffff%s|r  — %s"):format(sel.name, mark))
         local subp = {}
         if sel.loc then table.insert(subp, sel.loc) end
@@ -778,10 +791,13 @@ local function RenderDetail(tier)
         if sel.bosses and #sel.bosses > 0 then
             local killedN = 0
             for _, b in ipairs(sel.bosses) do if IsBossKilled(b) then killedN = killedN + 1 end end
-            table.insert(lines, ("|cffffd100Bosses (%d/%d):|r  |cff808080(all required to clear)|r"):format(killedN, #sel.bosses))
+            local bossNote = tierSkipped and "(skipped \226\128\148 ascended past)" or "(all required to clear)"
+            table.insert(lines, ("|cffffd100Bosses (%d/%d):|r  |cff808080%s|r"):format(killedN, #sel.bosses, bossNote))
             for _, b in ipairs(sel.bosses) do
                 if IsBossKilled(b) then
                     table.insert(lines, ("   %s |cff40ff40%s|r"):format(BOSS_KILLED_ICON, b.n))   -- slain
+                elseif tierSkipped then
+                    table.insert(lines, ("   |TInterface\\RaidFrame\\ReadyCheck-Waiting:15:15:0:-2|t |cff909090%s|r"):format(b.n))   -- skipped
                 else
                     table.insert(lines, ("   %s |cffc8c8c8%s|r"):format(BOSS_ALIVE_ICON, b.n))    -- still up
                 end
