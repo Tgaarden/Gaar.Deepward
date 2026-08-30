@@ -447,9 +447,12 @@ local function TierExists(id)
     return false
 end
 
--- Persist the panel's current view (tier + dungeon) so the hub reopens where you left off.
+-- Persist the panel's current view (tier + dungeon) so the HUB reopens where you left off. Only saved
+-- while OUT of instances: inside a dungeon the panel auto-selects the live instance, and that must not
+-- clobber the hub's remembered tab (so returning to Dalaran still restores what you were browsing there).
 local function DwSaveView()
     if type(DeepwardTiersDB) ~= "table" then return end
+    if IsInInstance() then return end
     DeepwardTiersDB.lastTier = selectedId
     DeepwardTiersDB.lastDungeonIdx = selectedDungeonIdx
 end
@@ -472,7 +475,11 @@ local function DwCurrentDungeon()
     local wants = DW_INST_ALIAS[key] or { (key:gsub("^the ", "")) }
     local function matches(dn)
         dn = (dn or ""):lower():gsub("^the ", "")
-        for _, w in ipairs(wants) do if dn == w then return true end end
+        -- substring both ways: dungeon names may prefix the wing (e.g. "Scarlet Monastery: Graveyard"
+        -- vs the alias "graveyard"), and the instance name may be a prefix of the dungeon name.
+        for _, w in ipairs(wants) do
+            if dn == w or dn:find(w, 1, true) or w:find(dn, 1, true) then return true end
+        end
         return false
     end
     local cands = {}
