@@ -447,6 +447,13 @@ local tierButtons = {}
 local selectedId = 1
 local selectedDungeonIdx = 1   -- which dungeon of the selected tier is shown (bg + info + Enter target)
 
+-- Hub view memory is SESSION-LOCAL (not SavedVariables): it lets a reopen in Dalaran return to the tab you
+-- were browsing, but it must NEVER bleed across characters. These locals reset on every login/reload, so the
+-- FIRST time you open the panel on a character it always lands on that character's ACTIVE tier (see Toggle),
+-- regardless of what another character had open last. (Was DeepwardTiersDB.lastTier — account-wide — which
+-- caused a fresh char to open on the previous char's tier.)
+local dwViewTier, dwViewDungeon
+
 local function TierExists(id)
     for _, t in ipairs(TIERS) do if t.id == id then return true end end
     return false
@@ -456,10 +463,9 @@ end
 -- while OUT of instances: inside a dungeon the panel auto-selects the live instance, and that must not
 -- clobber the hub's remembered tab (so returning to Dalaran still restores what you were browsing there).
 local function DwSaveView()
-    if type(DeepwardTiersDB) ~= "table" then return end
     if IsInInstance() then return end
-    DeepwardTiersDB.lastTier = selectedId
-    DeepwardTiersDB.lastDungeonIdx = selectedDungeonIdx
+    dwViewTier = selectedId
+    dwViewDungeon = selectedDungeonIdx
 end
 
 -- Which tier+dungeon matches the instance you're standing in (or nil if not in a Deepward instance).
@@ -1541,10 +1547,10 @@ local function Toggle()
         local tid, di = DwCurrentDungeon()
         if tid then
             SelectTier(tid, di)             -- inside a Deepward instance -> open straight to it
-        elseif DeepwardTiersDB.lastTier and TierExists(DeepwardTiersDB.lastTier) then
-            SelectTier(DeepwardTiersDB.lastTier, DeepwardTiersDB.lastDungeonIdx or 1)   -- hub: restore last view
+        elseif dwViewTier and TierExists(dwViewTier) then
+            SelectTier(dwViewTier, dwViewDungeon or 1)   -- hub, same session: restore last browsed view
         else
-            SelectTier(CurrentTierId())
+            SelectTier(CurrentTierId())     -- first open this session (or after char switch) -> ACTIVE tier
         end
         UpdateEnterButton()
         RenderComp()                        -- slot count reflects current party size
