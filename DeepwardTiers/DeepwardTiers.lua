@@ -1701,13 +1701,14 @@ end
 -- Role slots for the queue banner: Tank · DPS · DPS · DPS · Healer, all on ONE line, shown as the LFG
 -- role ICONS (not words) with a green check when filled and a grey "waiting" marker when still open.
 -- tanks/heals/dps are the server's filled-role counts (Q=searching:left:tanks:heals:dps).
--- Big role icons (24px) — the SAME LFG role icons the tier panel uses (see ROLE_ICON), on their own row.
--- A filled slot gets a green ready-check; an open slot a grey waiting mark.
+-- Big role icons (26px) — the SAME custom role textures the tier panel's role selector uses (ROLE_TEX:
+-- Tank-role / Healer-role / DPS-role), on their own row. A filled slot gets a green ready-check; an open
+-- slot a grey waiting mark.
 local Q_CHECK = "|TInterface\\RaidFrame\\ReadyCheck-Ready:18:18:0:-2|t"
 local Q_OPEN  = "|TInterface\\RaidFrame\\ReadyCheck-Waiting:18:18:0:-2|t"
-local RI_TANK = "|TInterface\\LFGFrame\\UI-LFG-ICON-ROLES:24:24:0:0:64:64:0:19:22:41|t"
-local RI_HEAL = "|TInterface\\LFGFrame\\UI-LFG-ICON-ROLES:24:24:0:0:64:64:20:39:1:20|t"
-local RI_DPS  = "|TInterface\\LFGFrame\\UI-LFG-ICON-ROLES:24:24:0:0:64:64:20:39:22:41|t"
+local RI_TANK = "|T" .. ROLE_TEX.tank   .. ":26:26:0:-2|t"
+local RI_HEAL = "|T" .. ROLE_TEX.healer .. ":26:26:0:-2|t"
+local RI_DPS  = "|T" .. ROLE_TEX.dps    .. ":26:26:0:-2|t"
 local function qslot(icon, filled)
     return icon .. (filled and Q_CHECK or Q_OPEN)
 end
