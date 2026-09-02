@@ -650,7 +650,7 @@ local function SetTierLabel(b)
         if IsTierClearedLive(TierById(b.tierId)) then
             tag = "  |TInterface\\RaidFrame\\ReadyCheck-Ready:18:18:0:0|t"     -- cleared
         else
-            tag = "  |TInterface\\RaidFrame\\ReadyCheck-Waiting:18:18:0:0|t"   -- skipped (ascended past it)
+            tag = "  |TInterface\\Buttons\\UI-GroupLoot-Pass-Up:16:16:0:0|t"   -- skipped (ascended past it — a "pass" icon, distinct from the green cleared-check)
         end
     else
         tag = ""
@@ -797,7 +797,7 @@ local function RenderDetail(tier)
                 if IsBossKilled(b) then
                     table.insert(lines, ("   %s |cff40ff40%s|r"):format(BOSS_KILLED_ICON, b.n))   -- slain
                 elseif tierSkipped then
-                    table.insert(lines, ("   |TInterface\\RaidFrame\\ReadyCheck-Waiting:15:15:0:-2|t |cff909090%s|r"):format(b.n))   -- skipped
+                    table.insert(lines, ("   |TInterface\\Buttons\\UI-GroupLoot-Pass-Up:14:14:0:-2|t |cff909090%s|r"):format(b.n))   -- skipped (pass icon)
                 else
                     table.insert(lines, ("   %s |cffc8c8c8%s|r"):format(BOSS_ALIVE_ICON, b.n))    -- still up
                 end
