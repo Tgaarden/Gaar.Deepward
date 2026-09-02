@@ -1619,6 +1619,10 @@ end
 local function DwSizeAlert(a)
     local w = 12 + (a.text:GetStringWidth() or 0) + 14
     if a.btn:IsShown() then w = w + 8 + a.btn:GetWidth() end
+    if a.roles and a.roles:IsShown() then
+        local rw = (a.roles:GetStringWidth() or 0) + 24   -- role row must fit on its own line too
+        if rw > w then w = rw end
+    end
     a:SetWidth(math.max(220, math.ceil(w)))
 end
 
@@ -1634,11 +1638,17 @@ local function DwMakeAlert()
     })
     f:SetBackdropColor(0, 0, 0, 0.85)
     f.text = f:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    f.text:SetPoint("LEFT", 12, 0)
+    f.text:SetPoint("TOPLEFT", 12, -11)
     f.text:SetJustifyH("LEFT")   -- single line, no width cap -> never wraps
     f.btn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
     f.btn:SetSize(64, 22)
-    f.btn:SetPoint("RIGHT", -8, 0)
+    f.btn:SetPoint("TOPRIGHT", -8, -7)
+    -- Optional second row (used by the queue banner): the role slots on their OWN line, centred BELOW the
+    -- text + button, with bigger icons. Hidden for alerts that don't set `roles`.
+    f.roles = f:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
+    f.roles:SetPoint("TOP", 0, -32)
+    f.roles:SetJustifyH("CENTER")
+    f.roles:Hide()
     f:SetScript("OnUpdate", function(self)
         if not self.deadline then return end
         local left = self.deadline - GetTime()
@@ -1669,6 +1679,15 @@ function DeepwardAlert(key, opts)
     else
         a.btn:Hide()
     end
+    if opts.roles and opts.roles ~= "" then
+        a.roles:SetText(opts.roles)
+        a.roles:Show()
+        a:SetHeight(66)          -- two rows: text/button on top, role slots below
+    else
+        a.roles:SetText("")
+        a.roles:Hide()
+        a:SetHeight(38)          -- single row
+    end
     if not a.deadline then a.text:SetText(a.label) end   -- static text (OnUpdate handles the timed case)
     DwSizeAlert(a)
     a:Show()
@@ -1682,13 +1701,15 @@ end
 -- Role slots for the queue banner: Tank · DPS · DPS · DPS · Healer, all on ONE line, shown as the LFG
 -- role ICONS (not words) with a green check when filled and a grey "waiting" marker when still open.
 -- tanks/heals/dps are the server's filled-role counts (Q=searching:left:tanks:heals:dps).
-local Q_CHECK = "|TInterface\\RaidFrame\\ReadyCheck-Ready:14:14:0:-1|t"
-local Q_OPEN  = "|TInterface\\RaidFrame\\ReadyCheck-Waiting:14:14:0:-1|t"
-local RI_TANK = "|TInterface\\LFGFrame\\UI-LFG-ICON-ROLES:16:16:0:0:64:64:0:19:22:41|t"
-local RI_HEAL = "|TInterface\\LFGFrame\\UI-LFG-ICON-ROLES:16:16:0:0:64:64:20:39:1:20|t"
-local RI_DPS  = "|TInterface\\LFGFrame\\UI-LFG-ICON-ROLES:16:16:0:0:64:64:20:39:22:41|t"
+-- Big role icons (24px) — the SAME LFG role icons the tier panel uses (see ROLE_ICON), on their own row.
+-- A filled slot gets a green ready-check; an open slot a grey waiting mark.
+local Q_CHECK = "|TInterface\\RaidFrame\\ReadyCheck-Ready:18:18:0:-2|t"
+local Q_OPEN  = "|TInterface\\RaidFrame\\ReadyCheck-Waiting:18:18:0:-2|t"
+local RI_TANK = "|TInterface\\LFGFrame\\UI-LFG-ICON-ROLES:24:24:0:0:64:64:0:19:22:41|t"
+local RI_HEAL = "|TInterface\\LFGFrame\\UI-LFG-ICON-ROLES:24:24:0:0:64:64:20:39:1:20|t"
+local RI_DPS  = "|TInterface\\LFGFrame\\UI-LFG-ICON-ROLES:24:24:0:0:64:64:20:39:22:41|t"
 local function qslot(icon, filled)
-    return (filled and Q_CHECK or Q_OPEN) .. icon
+    return icon .. (filled and Q_CHECK or Q_OPEN)
 end
 local function ShowQueueBanner(left, tanks, heals, dps)
     tanks, heals, dps = tonumber(tanks) or 0, tonumber(heals) or 0, tonumber(dps) or 0
@@ -1699,9 +1720,9 @@ local function ShowQueueBanner(left, tanks, heals, dps)
         qslot(RI_DPS, dps >= 3),
         qslot(RI_HEAL, heals >= 1),
     }
-    local label = "|cffffd200Deepward:|r s\195\184ker gruppe   " .. table.concat(slots, " ")
     DeepwardAlert("queue", {
-        label = label,
+        label = "|cffffd200Deepward:|r s\195\184ker gruppe",
+        roles = table.concat(slots, "   "),   -- own row, below the text + Leave button
         deadline = GetTime() + (tonumber(left) or 0),
         button = { text = "Leave", cmd = ".dwqueue leave" },
     })
