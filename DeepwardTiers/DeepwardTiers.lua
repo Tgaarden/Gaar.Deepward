@@ -2021,14 +2021,14 @@ end)
 -- draggable; position + hidden state persist in DeepwardTiersDB.
 -- ============================================================================
 local DW_BOT_BAR_ACTIONS = {
-    { cmd = "follow", label = "Follow",  icon = "Interface\Icons\Ability_Hunter_BeastCall",     tip = "All bots follow you" },
-    { cmd = "hold",   label = "Hold",    icon = "Interface\Icons\Spell_Nature_Sleep",           tip = "All bots hold position" },
-    { cmd = "come",   label = "Recall",  icon = "Interface\Icons\Spell_Arcane_Blink",           tip = "Teleport all bots to you" },
-    { cmd = "attack", label = "Attack",  icon = "Interface\Icons\Ability_Warrior_Charge",       tip = "All bots attack your target" },
-    { cmd = "pull",   label = "Pull",    icon = "Interface\Icons\Ability_Hunter_Misdirection",  tip = "Send a DPS bot to pull your target" },
-    { cmd = "stop",   label = "Stop",    icon = "Interface\Icons\Ability_Warrior_Disarm",       tip = "All bots stop & disengage" },
-    { cmd = "melee",  label = "Melee",   icon = "Interface\Icons\Ability_Rogue_Ambush",         tip = "All bots use melee range" },
-    { cmd = "ranged", label = "Ranged",  icon = "Interface\Icons\Ability_Hunter_AimedShot",     tip = "All bots use ranged range" },
+    { cmd = "follow", label = "Follow",  icon = "Interface\\Icons\\Ability_Hunter_BeastCall",     tip = "All bots follow you" },
+    { cmd = "hold",   label = "Hold",    icon = "Interface\\Icons\\Spell_Nature_Sleep",           tip = "All bots hold position" },
+    { cmd = "come",   label = "Recall",  icon = "Interface\\Icons\\Spell_Arcane_Blink",           tip = "Teleport all bots to you" },
+    { cmd = "attack", label = "Attack",  icon = "Interface\\Icons\\Ability_Warrior_Charge",       tip = "All bots attack your target" },
+    { cmd = "pull",   label = "Pull",    icon = "Interface\\Icons\\Ability_Hunter_Misdirection",  tip = "Send a DPS bot to pull your target" },
+    { cmd = "stop",   label = "Stop",    icon = "Interface\\Icons\\Ability_Warrior_Disarm",       tip = "All bots stop & disengage" },
+    { cmd = "melee",  label = "Melee",   icon = "Interface\\Icons\\Ability_Rogue_Ambush",         tip = "All bots use melee range" },
+    { cmd = "ranged", label = "Ranged",  icon = "Interface\\Icons\\Ability_Hunter_AimedShot",     tip = "All bots use ranged range" },
 }
 
 local dwBotBar
@@ -2060,8 +2060,8 @@ local function DwCreateBotBar()
     bar:SetScript("OnDragStart", function(self) if not (DeepwardTiersDB and DeepwardTiersDB.botBarLocked) then self:StartMoving() end end)
     bar:SetScript("OnDragStop", function(self) self:StopMovingOrSizing(); DwBotBarSavePos() end)
     bar:SetBackdrop({
-        bgFile   = "Interface\DialogFrame\UI-DialogBox-Background",
-        edgeFile = "Interface\DialogFrame\UI-DialogBox-Border",
+        bgFile   = "Interface\\DialogFrame\\UI-DialogBox-Background",
+        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
         tile = true, tileSize = 16, edgeSize = 12,
         insets = { left = 4, right = 4, top = 4, bottom = 4 },
     })
@@ -2077,9 +2077,9 @@ local function DwCreateBotBar()
         b:SetPoint("TOPLEFT", PAD + (i - 1) * (SIZE + PAD), -HDR)
         b:SetNormalTexture(act.icon)
         b:GetNormalTexture():SetTexCoord(0.08, 0.92, 0.08, 0.92)   -- trim the default icon border
-        b:SetHighlightTexture("Interface\Buttons\ButtonHilight-Square")
+        b:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square")
         b:GetHighlightTexture():SetBlendMode("ADD")
-        b:SetPushedTexture("Interface\Buttons\UI-Quickslot-Depress")
+        b:SetPushedTexture("Interface\\Buttons\\UI-Quickslot-Depress")
         local cmd = act.cmd
         b:SetScript("OnClick", function() SendCmd(".dwbot " .. cmd) end)
         b:SetScript("OnEnter", function(self)
