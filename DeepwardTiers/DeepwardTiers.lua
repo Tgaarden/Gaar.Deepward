@@ -2013,3 +2013,122 @@ mapBinder:SetScript("OnEvent", function()
         if mapFrame then mapFrame:Hide() end
     end
 end)
+
+-- ============================================================================
+-- Deepward Bot Bar — a movable, hunter-pet-style action bar for your party bots.
+-- Buttons fire ".dwbot <cmd>" (handled server-side, applies to the caller's own
+-- bots). Shown while you're inside a Deepward instance (where run bots live);
+-- draggable; position + hidden state persist in DeepwardTiersDB.
+-- ============================================================================
+local DW_BOT_BAR_ACTIONS = {
+    { cmd = "follow", label = "Follow",  icon = "Interface\Icons\Ability_Hunter_BeastCall",     tip = "All bots follow you" },
+    { cmd = "hold",   label = "Hold",    icon = "Interface\Icons\Spell_Nature_Sleep",           tip = "All bots hold position" },
+    { cmd = "come",   label = "Recall",  icon = "Interface\Icons\Spell_Arcane_Blink",           tip = "Teleport all bots to you" },
+    { cmd = "attack", label = "Attack",  icon = "Interface\Icons\Ability_Warrior_Charge",       tip = "All bots attack your target" },
+    { cmd = "pull",   label = "Pull",    icon = "Interface\Icons\Ability_Hunter_Misdirection",  tip = "Send a DPS bot to pull your target" },
+    { cmd = "stop",   label = "Stop",    icon = "Interface\Icons\Ability_Warrior_Disarm",       tip = "All bots stop & disengage" },
+    { cmd = "melee",  label = "Melee",   icon = "Interface\Icons\Ability_Rogue_Ambush",         tip = "All bots use melee range" },
+    { cmd = "ranged", label = "Ranged",  icon = "Interface\Icons\Ability_Hunter_AimedShot",     tip = "All bots use ranged range" },
+}
+
+local dwBotBar
+
+local function DwBotBarSavePos()
+    if not dwBotBar or type(DeepwardTiersDB) ~= "table" then return end
+    local p, _, rp, x, y = dwBotBar:GetPoint()
+    DeepwardTiersDB.botBar = { p = p, rp = rp, x = x, y = y }
+end
+
+local function DwInDeepwardInstance()
+    if not IsInInstance() then return false end
+    local name = GetInstanceInfo and GetInstanceInfo() or nil
+    return name and INSTANCE_MAPS[name] ~= nil or false
+end
+
+local function DwCreateBotBar()
+    if dwBotBar then return dwBotBar end
+    local n = #DW_BOT_BAR_ACTIONS
+    local SIZE, PAD, HDR = 32, 4, 14
+    local bar = CreateFrame("Frame", "DeepwardBotBar", UIParent)
+    bar:SetWidth(PAD + n * (SIZE + PAD))
+    bar:SetHeight(HDR + SIZE + PAD * 2)
+    bar:SetFrameStrata("MEDIUM")
+    bar:SetClampedToScreen(true)
+    bar:SetMovable(true)
+    bar:EnableMouse(true)
+    bar:RegisterForDrag("LeftButton")
+    bar:SetScript("OnDragStart", function(self) if not (DeepwardTiersDB and DeepwardTiersDB.botBarLocked) then self:StartMoving() end end)
+    bar:SetScript("OnDragStop", function(self) self:StopMovingOrSizing(); DwBotBarSavePos() end)
+    bar:SetBackdrop({
+        bgFile   = "Interface\DialogFrame\UI-DialogBox-Background",
+        edgeFile = "Interface\DialogFrame\UI-DialogBox-Border",
+        tile = true, tileSize = 16, edgeSize = 12,
+        insets = { left = 4, right = 4, top = 4, bottom = 4 },
+    })
+    bar:SetBackdropColor(0, 0, 0, 0.7)
+
+    local title = bar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    title:SetPoint("TOP", 0, -3)
+    title:SetText("Bots")
+
+    for i, act in ipairs(DW_BOT_BAR_ACTIONS) do
+        local b = CreateFrame("Button", nil, bar)
+        b:SetSize(SIZE, SIZE)
+        b:SetPoint("TOPLEFT", PAD + (i - 1) * (SIZE + PAD), -HDR)
+        b:SetNormalTexture(act.icon)
+        b:GetNormalTexture():SetTexCoord(0.08, 0.92, 0.08, 0.92)   -- trim the default icon border
+        b:SetHighlightTexture("Interface\Buttons\ButtonHilight-Square")
+        b:GetHighlightTexture():SetBlendMode("ADD")
+        b:SetPushedTexture("Interface\Buttons\UI-Quickslot-Depress")
+        local cmd = act.cmd
+        b:SetScript("OnClick", function() SendCmd(".dwbot " .. cmd) end)
+        b:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_TOP")
+            GameTooltip:SetText(act.label)
+            GameTooltip:AddLine(act.tip, 0.8, 0.8, 0.8, true)
+            GameTooltip:Show()
+        end)
+        b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    end
+
+    -- restore saved position (default: above the default action bar, centred)
+    bar:ClearAllPoints()
+    local pos = DeepwardTiersDB and DeepwardTiersDB.botBar
+    if pos and pos.p then
+        bar:SetPoint(pos.p, UIParent, pos.rp or pos.p, pos.x or 0, pos.y or 0)
+    else
+        bar:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 200)
+    end
+
+    dwBotBar = bar
+    return bar
+end
+
+local function DwUpdateBotBar()
+    DwCreateBotBar()
+    if DeepwardTiersDB and DeepwardTiersDB.botBarHidden then
+        dwBotBar:Hide()
+        return
+    end
+    if DwInDeepwardInstance() then dwBotBar:Show() else dwBotBar:Hide() end
+end
+
+local dwBotBarWatcher = CreateFrame("Frame")
+dwBotBarWatcher:RegisterEvent("PLAYER_ENTERING_WORLD")
+dwBotBarWatcher:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+dwBotBarWatcher:SetScript("OnEvent", function() DwUpdateBotBar() end)
+
+-- /dwbots — toggle the bar on/off; "/dwbots lock" toggles drag-lock.
+SLASH_DEEPWARDBOTS1 = "/dwbots"
+SlashCmdList["DEEPWARDBOTS"] = function(msg)
+    DwCreateBotBar()
+    msg = (msg or ""):lower():gsub("%s+", "")
+    if msg == "lock" then
+        DeepwardTiersDB.botBarLocked = not DeepwardTiersDB.botBarLocked
+        DEFAULT_CHAT_FRAME:AddMessage("Deepward bot bar " .. (DeepwardTiersDB.botBarLocked and "locked" or "unlocked") .. ".")
+        return
+    end
+    DeepwardTiersDB.botBarHidden = not DeepwardTiersDB.botBarHidden
+    DwUpdateBotBar()
+    DEFAULT_CHAT_FRAME:AddMessage("Deepward bot bar " .. (DeepwardTiersDB.botBarHidden and "hidden" or "shown") .. ".")
+end
