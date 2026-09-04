@@ -151,7 +151,7 @@ local TIERS = {
                 art = "Interface\\Glues\\LoadingScreens\\LoadScreenRazorfenDowns",
                 loc = "Thousand Needles", range = "37–47",
                 desc = "The undead quillboar necropolis, raised by Amnennar the Coldbringer.",
-                bosses = { {n=[[Ragglesnout]],e=7354}, {n=[[Mordresh Fire Eye]],e=7357}, {n=[[Amnennar the Coldbringer]],e=7358}, {n=[[Glutton]],e=8567} },
+                bosses = { {n=[[Ragglesnout]],e=7354}, {n=[[Mordresh Fire Eye]],e=7357}, {n=[[Amnennar the Coldbringer]],e=7358}, {n=[[Glutton]],e=8567}, {n=[[Lady Falther'ess]],e=14686} },
             },
             {
                 name = "Uldaman", cleared = false, map = 70, seg = 27,
