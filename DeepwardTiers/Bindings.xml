@@ -5,4 +5,28 @@
     <Binding name="DEEPWARDTIERS_MOUNT" header="DEEPWARD">
         DeepwardTiers_Mount()
     </Binding>
+    <Binding name="DEEPWARD_BOT_FOLLOW" header="DEEPWARDBOTS">
+        DeepwardBot_Cmd("follow")
+    </Binding>
+    <Binding name="DEEPWARD_BOT_HOLD" header="DEEPWARDBOTS">
+        DeepwardBot_Cmd("hold")
+    </Binding>
+    <Binding name="DEEPWARD_BOT_COME" header="DEEPWARDBOTS">
+        DeepwardBot_Cmd("come")
+    </Binding>
+    <Binding name="DEEPWARD_BOT_ATTACK" header="DEEPWARDBOTS">
+        DeepwardBot_Cmd("attack")
+    </Binding>
+    <Binding name="DEEPWARD_BOT_PULL" header="DEEPWARDBOTS">
+        DeepwardBot_Cmd("pull")
+    </Binding>
+    <Binding name="DEEPWARD_BOT_STOP" header="DEEPWARDBOTS">
+        DeepwardBot_Cmd("stop")
+    </Binding>
+    <Binding name="DEEPWARD_BOT_MELEE" header="DEEPWARDBOTS">
+        DeepwardBot_Cmd("melee")
+    </Binding>
+    <Binding name="DEEPWARD_BOT_RANGED" header="DEEPWARDBOTS">
+        DeepwardBot_Cmd("ranged")
+    </Binding>
 </Bindings>

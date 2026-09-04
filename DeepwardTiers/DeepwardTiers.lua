@@ -2118,11 +2118,9 @@ end
 
 local function DwUpdateBotBar()
     DwCreateBotBar()
-    if DeepwardTiersDB and DeepwardTiersDB.botBarHidden then
-        dwBotBar:Hide()
-        return
-    end
-    if DwInDeepwardInstance() then dwBotBar:Show() else dwBotBar:Hide() end
+    -- Always visible (movable) unless the player explicitly hid it with /dwbots. It used to auto-hide outside
+    -- a Deepward instance, which made it "disappear" in the hub with no obvious way back — now it just stays.
+    if DeepwardTiersDB and DeepwardTiersDB.botBarHidden then dwBotBar:Hide() else dwBotBar:Show() end
 end
 
 local dwBotBarWatcher = CreateFrame("Frame")
@@ -2144,3 +2142,33 @@ SlashCmdList["DEEPWARDBOTS"] = function(msg)
     DwUpdateBotBar()
     DEFAULT_CHAT_FRAME:AddMessage("Deepward bot bar " .. (DeepwardTiersDB.botBarHidden and "hidden" or "shown") .. ".")
 end
+
+-- /dwbotsreset — un-hide the bar AND snap it back to the centre of the screen (recovery if it drifted
+-- off-screen or got lost).
+SLASH_DEEPWARDBOTSRESET1 = "/dwbotsreset"
+SlashCmdList["DEEPWARDBOTSRESET"] = function()
+    DwCreateBotBar()
+    if type(DeepwardTiersDB) == "table" then
+        DeepwardTiersDB.botBarHidden = false
+        DeepwardTiersDB.botBar = nil
+    end
+    dwBotBar:ClearAllPoints()
+    dwBotBar:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+    dwBotBar:Show()
+    DwBotBarSavePos()
+    DEFAULT_CHAT_FRAME:AddMessage("Deepward bot bar reset to the centre of the screen.")
+end
+
+-- Bot actions for keybindings (Key Bindings -> "Deepward Bots"). Each fires ".dwbot <cmd>" (applies to all
+-- your bots). Exposed as a global so Bindings.xml can call it.
+function DeepwardBot_Cmd(cmd) SendCmd(".dwbot " .. cmd) end
+_G.DeepwardBot_Cmd = DeepwardBot_Cmd
+_G.BINDING_HEADER_DEEPWARDBOTS       = "Deepward Bots"
+_G.BINDING_NAME_DEEPWARD_BOT_FOLLOW  = "All bots: Follow me"
+_G.BINDING_NAME_DEEPWARD_BOT_HOLD    = "All bots: Hold position"
+_G.BINDING_NAME_DEEPWARD_BOT_COME    = "All bots: Come to me"
+_G.BINDING_NAME_DEEPWARD_BOT_ATTACK  = "All bots: Attack my target"
+_G.BINDING_NAME_DEEPWARD_BOT_PULL    = "Send a bot to pull my target"
+_G.BINDING_NAME_DEEPWARD_BOT_STOP    = "All bots: Stop & disengage"
+_G.BINDING_NAME_DEEPWARD_BOT_MELEE   = "All bots: Melee range"
+_G.BINDING_NAME_DEEPWARD_BOT_RANGED  = "All bots: Ranged range"
