@@ -2005,6 +2005,23 @@ end
 local mapToggleBtn = CreateFrame("Button", "DeepwardMapToggleButton", UIParent)
 mapToggleBtn:SetScript("OnClick", function() ToggleInstanceMap() end)
 
+-- /dwmap — open/close the Deepward instance map directly (keybinding-independent), and DIAGNOSE: if the
+-- current instance has no map it prints the instance name so a missing entry/art (e.g. the tier-9 raids,
+-- which have none) is obvious instead of a silent nothing.
+SLASH_DEEPWARDMAP1 = "/dwmap"
+SlashCmdList["DEEPWARDMAP"] = function()
+    local name = (GetInstanceInfo and GetInstanceInfo()) or nil
+    if not IsInInstance() then
+        DEFAULT_CHAT_FRAME:AddMessage("Deepward: the instance map only works inside a Deepward instance.")
+        return
+    end
+    if not ToggleInstanceMap() then
+        DEFAULT_CHAT_FRAME:AddMessage("Deepward: no instance map for '" .. tostring(name) .. "' (no map art for this instance yet).")
+    end
+end
+_G.DeepwardTiers_MapToggle = ToggleInstanceMap
+_G.BINDING_NAME_DEEPWARDTIERS_MAP = "Toggle instance map"
+
 -- Rebind M to the Deepward map while inside a Deepward dungeon; restore it (world map) on leaving.
 local mapBinder = CreateFrame("Frame")
 mapBinder:RegisterEvent("PLAYER_ENTERING_WORLD")
