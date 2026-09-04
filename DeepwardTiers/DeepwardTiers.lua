@@ -311,7 +311,10 @@ local function ParseLive(message)
     local b = message:match("B=([%d,]*)")
     if b then for id in b:gmatch("%d+") do killed[tonumber(id)] = true end end
     local admin = (tonumber(message:match("A=(%d+)")) == 1)   -- owner account may force-advance
-    DeepwardLive = { tier = t, max = tonumber(message:match("M=(%d+)")) or t, cleared = cleared, killed = killed, admin = admin }
+    local clears = {}                                  -- [segId] = lifetime completion count ("CN=seg:n,...")
+    local cn = message:match("CN=([%d:,]*)")
+    if cn then for seg, n in cn:gmatch("(%d+):(%d+)") do clears[tonumber(seg)] = tonumber(n) end end
+    DeepwardLive = { tier = t, max = tonumber(message:match("M=(%d+)")) or t, cleared = cleared, killed = killed, admin = admin, clears = clears }
 end
 
 -- Live group roster, sent by the server as its own short "DEEPWARD\tG=name:role,name:role,..." message
@@ -409,6 +412,11 @@ end
 -- A boss (a {n=name, e=entry} entry) is slain when the server reported its entry as killed.
 local function IsBossKilled(b)
     return DeepwardLive and DeepwardLive.killed and b and DeepwardLive.killed[b.e] or false
+end
+
+-- Lifetime completion count for a dungeon (times its whole instance has been cleared).
+local function DungeonClears(d)
+    return DeepwardLive and DeepwardLive.clears and d and DeepwardLive.clears[d.seg] or 0
 end
 
 -- Required clears per tier (N of M instances). Mirrors the server's tier.required_clears.
@@ -793,6 +801,10 @@ local function RenderDetail(tier)
         if sel.range then table.insert(subp, "lvl " .. sel.range) end
         if #subp > 0 then
             table.insert(lines, ("|cffa0a0a0%s|r"):format(table.concat(subp, "  ·  ")))
+        end
+        local completedN = DungeonClears(sel)
+        if completedN > 0 then
+            table.insert(lines, ("|cffffd100Completed:|r |cff40ff40%d\195\151|r"):format(completedN))
         end
         if sel.bosses and #sel.bosses > 0 then
             local killedN = 0
