@@ -20,8 +20,15 @@
 ]]
 
 local _G = _G
-local ROWS = 14
-local ROW_H = 28   -- per-row height/stride (bigger rows)
+-- Two-column layout, bigger rows. Spells fill the LEFT column top-to-bottom, then the RIGHT column
+-- (column-major). ROWS is the total number of visible rows across both columns.
+local COLS = 2
+local ROWS_PER_COL = 16
+local ROWS = COLS * ROWS_PER_COL
+local ROW_H = 32           -- per-row height/stride (bigger rows)
+local FRAME_W = 800        -- wide enough for two columns
+local COL_W = 366          -- content width of each column
+local COL_X = { 16, 16 + COL_W + 16 }   -- left x of column 1 / column 2
 
 -- 3.3.5a spellbook APIs take (index, "spell"): PickupSpell + GameTooltip:SetSpell.
 -- (The ...BookItem variants are Cataclysm+.) Prefer the 3.3.5a name, fall back otherwise.
@@ -134,9 +141,9 @@ local function PlaceOnBar(slot, label)
 end
 
 -- ---------------- UI ----------------
-local BASE_HEIGHT = 560
+local BASE_HEIGHT = 680
 local f = CreateFrame("Frame", "DeepwardSpellBookFrame", UIParent)
-f:SetWidth(640); f:SetHeight(BASE_HEIGHT)
+f:SetWidth(FRAME_W); f:SetHeight(BASE_HEIGHT)
 f:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 f:SetBackdrop({
   bgFile = "Interface/DialogFrame/UI-DialogBox-Background",
@@ -152,44 +159,44 @@ f:EnableMouseWheel(true)
 f:Hide()
 table.insert(UISpecialFrames, "DeepwardSpellBookFrame")
 
-local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-title:SetPoint("TOP", f, "TOP", 0, -14)
+local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
+title:SetPoint("TOP", f, "TOP", 0, -16)
 title:SetText("Deepward — Spell Book")
 
 local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
 close:SetPoint("TOPRIGHT", f, "TOPRIGHT", -8, -8)
 
 local searchBox = CreateFrame("EditBox", "DeepwardSpellSearchBox", f, "InputBoxTemplate")
-searchBox:SetWidth(200); searchBox:SetHeight(20); searchBox:SetAutoFocus(false)
-searchBox:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -40)
+searchBox:SetWidth(260); searchBox:SetHeight(22); searchBox:SetAutoFocus(false)
+searchBox:SetPoint("TOPLEFT", f, "TOPLEFT", 20, -44)
 
 local hideLower = CreateFrame("CheckButton", "DeepwardHideLowerRanks", f, "UICheckButtonTemplate")
-hideLower:SetWidth(22); hideLower:SetHeight(22)
-hideLower:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -66)
+hideLower:SetWidth(26); hideLower:SetHeight(26)
+hideLower:SetPoint("TOPLEFT", f, "TOPLEFT", 20, -74)
 hideLower:SetChecked(true)
 _G["DeepwardHideLowerRanksText"]:SetText("Highest rank only")
-_G["DeepwardHideLowerRanksText"]:SetFontObject(GameFontHighlightSmall)
+_G["DeepwardHideLowerRanksText"]:SetFontObject(GameFontHighlight)
 
 local hidePassive = CreateFrame("CheckButton", "DeepwardHidePassives", f, "UICheckButtonTemplate")
-hidePassive:SetWidth(22); hidePassive:SetHeight(22)
-hidePassive:SetPoint("LEFT", _G["DeepwardHideLowerRanksText"], "RIGHT", 12, 0)
+hidePassive:SetWidth(26); hidePassive:SetHeight(26)
+hidePassive:SetPoint("LEFT", _G["DeepwardHideLowerRanksText"], "RIGHT", 14, 0)
 hidePassive:SetChecked(true)
 _G["DeepwardHidePassivesText"]:SetText("Hide passives")
-_G["DeepwardHidePassivesText"]:SetFontObject(GameFontHighlightSmall)
+_G["DeepwardHidePassivesText"]:SetFontObject(GameFontHighlight)
 
 local hideEffects = CreateFrame("CheckButton", "DeepwardHideEffects", f, "UICheckButtonTemplate")
-hideEffects:SetWidth(22); hideEffects:SetHeight(22)
-hideEffects:SetPoint("LEFT", _G["DeepwardHidePassivesText"], "RIGHT", 12, 0)
+hideEffects:SetWidth(26); hideEffects:SetHeight(26)
+hideEffects:SetPoint("LEFT", _G["DeepwardHidePassivesText"], "RIGHT", 14, 0)
 hideEffects:SetChecked(true)
 _G["DeepwardHideEffectsText"]:SetText("Hide effects")
-_G["DeepwardHideEffectsText"]:SetFontObject(GameFontHighlightSmall)
+_G["DeepwardHideEffectsText"]:SetFontObject(GameFontHighlight)
 
 local hideStances = CreateFrame("CheckButton", "DeepwardHideStances", f, "UICheckButtonTemplate")
-hideStances:SetWidth(22); hideStances:SetHeight(22)
-hideStances:SetPoint("LEFT", _G["DeepwardHideEffectsText"], "RIGHT", 12, 0)
+hideStances:SetWidth(26); hideStances:SetHeight(26)
+hideStances:SetPoint("LEFT", _G["DeepwardHideEffectsText"], "RIGHT", 14, 0)
 hideStances:SetChecked(true)   -- default ON: hide stances/forms/presences
 _G["DeepwardHideStancesText"]:SetText("Hide stances")
-_G["DeepwardHideStancesText"]:SetFontObject(GameFontHighlightSmall)
+_G["DeepwardHideStancesText"]:SetFontObject(GameFontHighlight)
 
 local allTabsData, tabsBuilt = nil, false
 local curTabIndex = 1
@@ -232,8 +239,8 @@ local function FilteredEntries()
   return out
 end
 
-local TAB_ROW_Y, TAB_ROW_H = -98, 24
-local TAB_PAD, TAB_MIN_W, TAB_MAX_ROW_W = 16, 40, 610
+local TAB_ROW_Y, TAB_ROW_H = -112, 26
+local TAB_PAD, TAB_MIN_W, TAB_MAX_ROW_W = 18, 44, FRAME_W - 40
 
 local function BuildTabButtons()
   if tabsBuilt then return end
@@ -247,7 +254,7 @@ local function BuildTabButtons()
   for idx, label in ipairs(labels) do
     local idx = idx
     local tb = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-    tb:SetHeight(20); tb:SetText(label)
+    tb:SetHeight(24); tb:SetText(label)
     local fs = tb:GetFontString()
     local textW = (fs and fs:GetStringWidth()) or TAB_MIN_W
     local w = math.max(TAB_MIN_W, textW + TAB_PAD)
@@ -266,8 +273,10 @@ local function BuildTabButtons()
   f:SetHeight(BASE_HEIGHT + (tabRowCount - 1) * TAB_ROW_H)
   local listTop = TAB_ROW_Y - (tabRowCount - 1) * TAB_ROW_H - TAB_ROW_H - 10
   for i, r in ipairs(rows) do
+    local col = ((i - 1) < ROWS_PER_COL) and 1 or 2   -- fill left column first, then right
+    local posInCol = (i - 1) % ROWS_PER_COL
     r:ClearAllPoints()
-    r:SetPoint("TOPLEFT", f, "TOPLEFT", 16, listTop - (i - 1) * ROW_H)
+    r:SetPoint("TOPLEFT", f, "TOPLEFT", COL_X[col], listTop - posInCol * ROW_H)
   end
 end
 
@@ -294,22 +303,24 @@ RefreshList = function()
 end
 
 for i = 1, ROWS do
+  local col = ((i - 1) < ROWS_PER_COL) and 1 or 2
+  local posInCol = (i - 1) % ROWS_PER_COL
   local row = CreateFrame("Button", nil, f)
-  row:SetWidth(608); row:SetHeight(ROW_H - 2)
-  row:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -128 - (i - 1) * ROW_H)
+  row:SetWidth(COL_W); row:SetHeight(ROW_H - 2)
+  row:SetPoint("TOPLEFT", f, "TOPLEFT", COL_X[col], -140 - posInCol * ROW_H)
   row:SetHighlightTexture("Interface/QuestFrame/UI-QuestTitleHighlight")
   row:RegisterForClicks("LeftButtonUp")
   local icon = row:CreateTexture(nil, "ARTWORK")
-  icon:SetWidth(24); icon:SetHeight(24); icon:SetPoint("LEFT", 0, 0)
+  icon:SetWidth(28); icon:SetHeight(28); icon:SetPoint("LEFT", 0, 0)
   row.icon = icon
   local mark = row:CreateTexture(nil, "OVERLAY")
   mark:SetTexture(READY_CHECK_TEX)
-  mark:SetWidth(14); mark:SetHeight(14)
+  mark:SetWidth(16); mark:SetHeight(16)
   mark:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", 2, -2)
   mark:Hide()
   row.mark = mark
-  local label = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  label:SetPoint("LEFT", icon, "RIGHT", 6, 0); label:SetWidth(570); label:SetJustifyH("LEFT")
+  local label = row:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+  label:SetPoint("LEFT", icon, "RIGHT", 8, 0); label:SetWidth(COL_W - 40); label:SetJustifyH("LEFT")
   row.label = label
   row:SetScript("OnClick", function(self)
     if not self.slot then return end
