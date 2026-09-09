@@ -2133,16 +2133,42 @@ local function DwCreateBotBar()
     return bar
 end
 
+-- Do I actually command bots right now? True only when I'm in a group, I'm the group leader, and the group
+-- contains at least one NPCbot (a creature party/raid member — UnitIsPlayer is false for bots, true for real
+-- players). If I'm not the leader, the bots aren't mine to steer, so the bar stays hidden.
+local function DwHasControlledBots()
+    local isLeader, units, n
+    if GetNumRaidMembers and GetNumRaidMembers() > 0 then
+        if not (IsRaidLeader and IsRaidLeader()) then return false end
+        n = GetNumRaidMembers(); units = "raid"
+    elseif GetNumPartyMembers and GetNumPartyMembers() > 0 then
+        if not (IsPartyLeader and IsPartyLeader()) then return false end
+        n = GetNumPartyMembers(); units = "party"
+    else
+        return false   -- solo: no group, nothing to command
+    end
+    for i = 1, n do
+        local u = units .. i
+        if UnitExists(u) and not UnitIsPlayer(u) then return true end   -- a creature in the group = a bot
+    end
+    return false
+end
+
 local function DwUpdateBotBar()
     DwCreateBotBar()
-    -- Always visible (movable) unless the player explicitly hid it with /dwbots. It used to auto-hide outside
-    -- a Deepward instance, which made it "disappear" in the hub with no obvious way back — now it just stays.
-    if DeepwardTiersDB and DeepwardTiersDB.botBarHidden then dwBotBar:Hide() else dwBotBar:Show() end
+    -- Show only when I'm the leader of a group that actually contains bots I command. Hidden solo, hidden when
+    -- I'm not leader, and hidden if the player explicitly toggled it off with /dwbots.
+    local show = DwHasControlledBots()
+    if DeepwardTiersDB and DeepwardTiersDB.botBarHidden then show = false end
+    if show then dwBotBar:Show() else dwBotBar:Hide() end
 end
 
 local dwBotBarWatcher = CreateFrame("Frame")
 dwBotBarWatcher:RegisterEvent("PLAYER_ENTERING_WORLD")
 dwBotBarWatcher:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+dwBotBarWatcher:RegisterEvent("PARTY_MEMBERS_CHANGED")
+dwBotBarWatcher:RegisterEvent("PARTY_LEADER_CHANGED")
+dwBotBarWatcher:RegisterEvent("RAID_ROSTER_UPDATE")
 dwBotBarWatcher:SetScript("OnEvent", function() DwUpdateBotBar() end)
 
 -- /dwbots — toggle the bar on/off; "/dwbots lock" toggles drag-lock.
@@ -2171,9 +2197,9 @@ SlashCmdList["DEEPWARDBOTSRESET"] = function()
     end
     dwBotBar:ClearAllPoints()
     dwBotBar:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
-    dwBotBar:Show()
     DwBotBarSavePos()
-    DEFAULT_CHAT_FRAME:AddMessage("Deepward bot bar reset to the centre of the screen.")
+    DwUpdateBotBar()   -- re-centre, but still only visible if I'm leading a group with bots
+    DEFAULT_CHAT_FRAME:AddMessage("Deepward bot bar reset to the centre of the screen (shows when you lead bots).")
 end
 
 -- Bot actions for keybindings (Key Bindings -> "Deepward Bots"). Each fires ".dwbot <cmd>" (applies to all
