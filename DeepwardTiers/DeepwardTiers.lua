@@ -2133,11 +2133,21 @@ local function DwCreateBotBar()
     return bar
 end
 
+-- Is this group member an NPCbot? Bots are server-side creatures, so their GUID is a creature GUID (starts
+-- 0xF...) while a real player's starts 0x0.... UnitIsPlayer is unreliable here — this fork makes bots report
+-- as players — so key off the GUID type instead.
+local function DwUnitIsBot(u)
+    if not UnitExists(u) then return false end
+    local g = UnitGUID(u)
+    if g and g:sub(1, 3) == "0xF" then return true end   -- creature-type GUID = a bot
+    if not UnitIsPlayer(u) then return true end           -- fallback for forks that expose it as a creature
+    return false
+end
+
 -- Do I actually command bots right now? True only when I'm in a group, I'm the group leader, and the group
--- contains at least one NPCbot (a creature party/raid member — UnitIsPlayer is false for bots, true for real
--- players). If I'm not the leader, the bots aren't mine to steer, so the bar stays hidden.
+-- contains at least one NPCbot. If I'm not the leader, the bots aren't mine to steer, so the bar stays hidden.
 local function DwHasControlledBots()
-    local isLeader, units, n
+    local units, n
     if GetNumRaidMembers and GetNumRaidMembers() > 0 then
         if not (IsRaidLeader and IsRaidLeader()) then return false end
         n = GetNumRaidMembers(); units = "raid"
@@ -2148,8 +2158,7 @@ local function DwHasControlledBots()
         return false   -- solo: no group, nothing to command
     end
     for i = 1, n do
-        local u = units .. i
-        if UnitExists(u) and not UnitIsPlayer(u) then return true end   -- a creature in the group = a bot
+        if DwUnitIsBot(units .. i) then return true end
     end
     return false
 end
