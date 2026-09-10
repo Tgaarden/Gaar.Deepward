@@ -1,7 +1,7 @@
 ## Interface: 30300
 ## Title: Deepward Meter
-## Notes: Minimal group DPS meter, class-coloured. /dwmeter toggle, right-click to reset. Per-instance or per-encounter.
+## Notes: Details!-inspired meter — modes (DPS/HPS/taken/interrupts/dispels/deaths), segments, click a bar for the spell breakdown, class icons, report, resizable. /dwmeter.
 ## Author: Deepward
-## Version: 1.1
+## Version: 2.0
 ## SavedVariables: DeepwardMeterDB
 DeepwardMeter.lua
