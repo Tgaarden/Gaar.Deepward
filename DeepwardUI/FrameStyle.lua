@@ -19,7 +19,35 @@ local function DB()
     if d.framePortraits == nil then d.framePortraits = true end   -- square portrait with our own border
     if d.frameThreshold == nil then d.frameThreshold = true end   -- recolour health bar on low HP
     if d.frameStripBorders == nil then d.frameStripBorders = true end   -- hide Blizzard's ornate borders
+    if d.frameBackdrop == nil then d.frameBackdrop = true end           -- black see-through backing panel
     return d
+end
+
+-- unit token -> its top-level Blizzard frame (for the backdrop panel)
+local FRAME_OF = {
+    player = "PlayerFrame", target = "TargetFrame", focus = "FocusFrame", pet = "PetFrame",
+    party1 = "PartyMemberFrame1", party2 = "PartyMemberFrame2", party3 = "PartyMemberFrame3", party4 = "PartyMemberFrame4",
+}
+-- Black, semi-transparent backing panel behind a unit frame's portrait + bars + name.
+local function StyleBackdrop(f)
+    local uf, pt, hb, mb = _G[FRAME_OF[f.u]], _G[f.p], _G[f.h], _G[f.m]
+    if not (uf and pt and hb and mb) then return end
+    if not f._bd then
+        local bd = CreateFrame("Frame", nil, uf)
+        bd:SetFrameLevel(math.max(0, uf:GetFrameLevel() - 1))   -- behind the bars/portrait
+        bd:SetBackdrop({ bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 10,
+            insets = { left = 2, right = 2, top = 2, bottom = 2 } })
+        bd:SetBackdropColor(0, 0, 0, 0.5)          -- see-through black
+        bd:SetBackdropBorderColor(0, 0, 0, 0.9)
+        f._bd = bd
+    end
+    local bd = f._bd
+    if not DB().frameBackdrop then bd:Hide(); return end
+    bd:ClearAllPoints()
+    bd:SetPoint("TOPLEFT", pt, "TOPLEFT", -4, 16)          -- include the name row above the portrait
+    bd:SetPoint("BOTTOMRIGHT", mb, "BOTTOMRIGHT", 6, -4)   -- down to the bottom bar, out to the bar's right
+    bd:Show()
 end
 
 -- Blizzard's ornate frame border textures (the gold rings incl. the round portrait ring). Hidden so our
@@ -183,6 +211,7 @@ driver:SetScript("OnUpdate", function(_, e)
         UpdateBarText(f.m, f.u, true)
         ApplyHealthColor(_G[f.h], f.u)
         PortraitBorder(f.p, f.u)
+        StyleBackdrop(f)
     end
     for i = 1, 4 do StylePartyBars(i) end   -- keep party bars tall + readable
     StyleBigPortrait("PlayerPortrait", "PlayerFrameHealthBar", "PlayerFrameManaBar")
@@ -232,6 +261,8 @@ local function ConfigMenu()
           func = function() DB().frameThreshold = not DB().frameThreshold end },
         { text = "Hide Blizzard borders (black edge)", checked = DB().frameStripBorders, keepShownOnClick = true,
           func = function() DB().frameStripBorders = not DB().frameStripBorders; StripBlizzardBorders() end },
+        { text = "Black backing panel", checked = DB().frameBackdrop, keepShownOnClick = true,
+          func = function() DB().frameBackdrop = not DB().frameBackdrop end },
         { text = "Font size", notCheckable = true, hasArrow = true, menuList = {
             { text = "Small (11)",  checked = (DB().frameFontSize == 11), func = function() SetFontSize(11) end },
             { text = "Normal (12)", checked = (DB().frameFontSize == 12), func = function() SetFontSize(12) end },
