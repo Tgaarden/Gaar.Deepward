@@ -1264,6 +1264,11 @@ local function CreateUI()
     DwTopToggle("Threat", 60, tx, function()
         if _G.DeepwardThreat_Toggle then _G.DeepwardThreat_Toggle()
         else DEFAULT_CHAT_FRAME:AddMessage("|cffff6666Deepward:|r DeepwardThreat addon not loaded.") end
+    end); tx = tx + 60 + 4
+    -- Cast: open the cast-bar config.
+    DwTopToggle("Cast", 56, tx, function()
+        if _G.DeepwardCast_Config then _G.DeepwardCast_Config()
+        else DEFAULT_CHAT_FRAME:AddMessage("|cffff6666Deepward:|r DeepwardCast addon not loaded.") end
     end)
 
     frame.summary = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlightLarge")

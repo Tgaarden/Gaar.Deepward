@@ -16,9 +16,27 @@ local function DB()
     if d.frameClassColor == nil then d.frameClassColor = true end
     if d.frameBarText   == nil then d.frameBarText   = true end
     if d.frameFontSize  == nil then d.frameFontSize  = 12 end
-    if d.framePortraits == nil then d.framePortraits = true end   -- class-coloured portrait border
+    if d.framePortraits == nil then d.framePortraits = true end   -- square portrait with our own border
     if d.frameThreshold == nil then d.frameThreshold = true end   -- recolour health bar on low HP
+    if d.frameStripBorders == nil then d.frameStripBorders = true end   -- hide Blizzard's ornate borders
     return d
+end
+
+-- Blizzard's ornate frame border textures (the gold rings incl. the round portrait ring). Hidden so our
+-- own clean black-edged look shows. They get re-shown by Blizzard on updates, so this is re-applied.
+local BLIZZ_BORDERS = {
+    "PlayerFrameTexture", "TargetFrameTextureFrameTexture", "FocusFrameTextureFrameTexture", "PetFrameTexture",
+    "PartyMemberFrame1Texture", "PartyMemberFrame2Texture", "PartyMemberFrame3Texture", "PartyMemberFrame4Texture",
+}
+local function StripBlizzardBorders()
+    local hide = DB().frameStripBorders
+    for _, n in ipairs(BLIZZ_BORDERS) do
+        local t = _G[n]
+        if t then
+            if hide and t:IsShown() then t:Hide()
+            elseif not hide and not t:IsShown() then t:Show() end
+        end
+    end
 end
 
 -- health bar, power bar, unit token, portrait texture
@@ -68,13 +86,7 @@ local function PortraitBorder(portraitName, unit)
     end
     -- Square the portrait: crop the round edges so it fills the square border instead of looking round.
     if pt.SetTexCoord then pt:SetTexCoord(0.16, 0.86, 0.16, 0.86) end
-    local r, g, bl = 0.6, 0.6, 0.6
-    if UnitIsPlayer(unit) then
-        local _, cls = UnitClass(unit)
-        local c = cls and RAID_CLASS_COLORS and RAID_CLASS_COLORS[cls]
-        if c then r, g, bl = c.r, c.g, c.b end
-    end   -- NPCs keep the neutral grey border
-    b:SetBackdropBorderColor(r, g, bl)
+    b:SetBackdropBorderColor(0, 0, 0, 1)   -- our own clean black edge (Blizzard's round ring is hidden)
     b:Show()
 end
 
@@ -152,6 +164,7 @@ driver:SetScript("OnUpdate", function(_, e)
         PortraitBorder(f.p, f.u)
     end
     for i = 1, 4 do StylePartyBars(i) end   -- keep party bars tall + readable
+    StripBlizzardBorders()
 end)
 
 -- Re-assert class colour when the target/focus/party changes (Blizzard repaints these).
@@ -194,6 +207,8 @@ local function ConfigMenu()
           func = function() DB().framePortraits = not DB().framePortraits end },
         { text = "Low-HP colour (orange/red)", checked = DB().frameThreshold, keepShownOnClick = true,
           func = function() DB().frameThreshold = not DB().frameThreshold end },
+        { text = "Hide Blizzard borders (black edge)", checked = DB().frameStripBorders, keepShownOnClick = true,
+          func = function() DB().frameStripBorders = not DB().frameStripBorders; StripBlizzardBorders() end },
         { text = "Font size", notCheckable = true, hasArrow = true, menuList = {
             { text = "Small (11)",  checked = (DB().frameFontSize == 11), func = function() SetFontSize(11) end },
             { text = "Normal (12)", checked = (DB().frameFontSize == 12), func = function() SetFontSize(12) end },

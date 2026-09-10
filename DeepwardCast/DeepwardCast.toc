@@ -1,0 +1,7 @@
+## Interface: 30300
+## Title: Deepward Cast
+## Notes: Movable cast bars (player/target/focus/pet) with spell icon, timer and a latency safe-zone. /dwcast.
+## Author: Deepward
+## Version: 1.0
+## SavedVariables: DeepwardCastDB
+DeepwardCast.lua
