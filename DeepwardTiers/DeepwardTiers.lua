@@ -1223,6 +1223,17 @@ local function CreateUI()
     local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", -6, -6)
 
+    -- Top-left toggle: show/hide the Deepward Meter (lives in the DeepwardUI addon; call its slash handler by
+    -- name so load order doesn't matter).
+    local meterBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    meterBtn:SetSize(78, 22)
+    meterBtn:SetPoint("TOPLEFT", 14, -14)
+    meterBtn:SetText("DWMeter")
+    meterBtn:SetScript("OnClick", function()
+        if SlashCmdList["DEEPWARDMETER"] then SlashCmdList["DEEPWARDMETER"]("")
+        else DEFAULT_CHAT_FRAME:AddMessage("|cffff6666Deepward:|r DWMeter addon not loaded.") end
+    end)
+
     frame.summary = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlightLarge")
     frame.summary:SetPoint("TOP", title, "BOTTOM", 0, -8)
 
