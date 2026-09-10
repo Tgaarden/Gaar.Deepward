@@ -314,9 +314,9 @@ local function ParseLive(message)
     local clears = {}                                  -- [segId] = lifetime completion count ("CN=seg:n,...")
     local cn = message:match("CN=([%d:,]*)")
     if cn then for seg, n in cn:gmatch("(%d+):(%d+)") do clears[tonumber(seg)] = tonumber(n) end end
-    local runDone = {}                                  -- [segId]=true: current run completed, resets fresh next entry ("RC=")
-    local rc = message:match("RC=([%d,]*)")
-    if rc then for id in rc:gmatch("%d+") do runDone[tonumber(id)] = true end end
+    local runDone = {}                                  -- [segId]=true: current run completed, resets fresh next entry ("FR=")
+    local fr = message:match("FR=([%d,]*)")
+    if fr then for id in fr:gmatch("%d+") do runDone[tonumber(id)] = true end end
     DeepwardLive = { tier = t, max = tonumber(message:match("M=(%d+)")) or t, cleared = cleared, killed = killed, admin = admin, clears = clears, runDone = runDone }
 end
 
