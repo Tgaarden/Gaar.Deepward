@@ -1223,15 +1223,31 @@ local function CreateUI()
     local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", -6, -6)
 
-    -- Top-left toggle: show/hide the Deepward Meter (lives in the DeepwardUI addon; call its slash handler by
-    -- name so load order doesn't matter).
-    local meterBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-    meterBtn:SetSize(78, 22)
-    meterBtn:SetPoint("TOPLEFT", 14, -14)
-    meterBtn:SetText("DWMeter")
-    meterBtn:SetScript("OnClick", function()
+    -- Top-left toggle row: show/hide Deepward's toggleable windows. Each toggle is resolved at click time
+    -- (slash handler or global by name) so cross-addon load order never matters.
+    local function DwTopToggle(label, w, x, fn)
+        local b = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+        b:SetSize(w, 22)
+        b:SetPoint("TOPLEFT", x, -14)
+        b:SetText(label)
+        b:SetScript("OnClick", fn)
+        return b
+    end
+    local tx = 14
+    DwTopToggle("DWMeter", 72, tx, function()
         if SlashCmdList["DEEPWARDMETER"] then SlashCmdList["DEEPWARDMETER"]("")
         else DEFAULT_CHAT_FRAME:AddMessage("|cffff6666Deepward:|r DWMeter addon not loaded.") end
+    end); tx = tx + 72 + 4
+    DwTopToggle("Bots", 52, tx, function()
+        if SlashCmdList["DEEPWARDBOTS"] then SlashCmdList["DEEPWARDBOTS"]("") end
+    end); tx = tx + 52 + 4
+    DwTopToggle("Map", 52, tx, function()
+        if _G.DeepwardTiers_MapToggle then _G.DeepwardTiers_MapToggle() end
+    end); tx = tx + 52 + 4
+    DwTopToggle("Spells", 60, tx, function()
+        if _G.DeepwardSpellBook_Toggle then _G.DeepwardSpellBook_Toggle()
+        elseif SlashCmdList["DEEPWARDSPELLBOOK"] then SlashCmdList["DEEPWARDSPELLBOOK"]("")
+        else DEFAULT_CHAT_FRAME:AddMessage("|cffff6666Deepward:|r Spell Book addon not loaded.") end
     end)
 
     frame.summary = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlightLarge")
