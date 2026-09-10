@@ -93,8 +93,25 @@ end)
 -- ---------------------------------------------------------------------------
 -- Slash
 -- ---------------------------------------------------------------------------
+-- Globals so the config menu (FrameStyle / the Deepward panel button) can drive moving/scale.
+function DeepwardFrames_ApplyScale() ApplyScale() end
+function DeepwardFrames_ResetPositions()
+    DB().frames = {}
+    ForEachFrame(function(f) f:SetUserPlaced(false) end)
+    print("|cff5599ffDeepward frames:|r positions cleared — |cffffd100/reload|r to restore defaults.")
+end
+function DeepwardFrames_ToggleLock()
+    DB().framesLocked = not DB().framesLocked
+    print("|cff5599ffDeepward frames:|r " .. (DB().framesLocked and "locked." or "unlocked (shift-drag to move)."))
+    return DB().framesLocked
+end
+_G.DeepwardFrames_ApplyScale = DeepwardFrames_ApplyScale
+_G.DeepwardFrames_ResetPositions = DeepwardFrames_ResetPositions
+_G.DeepwardFrames_ToggleLock = DeepwardFrames_ToggleLock
+
 SLASH_DEEPWARDFRAMES1 = "/dwframes"
 SLASH_DEEPWARDFRAMES2 = "/dwmove"
+SLASH_DEEPWARDFRAMES3 = "/dwframe"
 SlashCmdList["DEEPWARDFRAMES"] = function(msg)
     msg = (msg or ""):lower()
     local cmd, arg = msg:match("^(%S*)%s*(.*)$")

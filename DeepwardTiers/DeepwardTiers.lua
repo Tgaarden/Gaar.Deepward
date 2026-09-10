@@ -1254,6 +1254,11 @@ local function CreateUI()
     DwTopToggle("Bots", 52, tx, function()
         if SlashCmdList["DEEPWARDBOTSRESET"] then SlashCmdList["DEEPWARDBOTSRESET"]("")
         elseif SlashCmdList["DEEPWARDBOTS"] then SlashCmdList["DEEPWARDBOTS"]("") end
+    end); tx = tx + 52 + 4
+    -- Frames: open the unit-frames config (class colour, portraits, low-HP, text, scale, move/lock/reset).
+    DwTopToggle("Frames", 62, tx, function()
+        if _G.DeepwardFrames_Config then _G.DeepwardFrames_Config()
+        else DEFAULT_CHAT_FRAME:AddMessage("|cffff6666Deepward:|r DeepwardUI addon not loaded.") end
     end)
 
     frame.summary = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlightLarge")

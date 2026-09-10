@@ -14,22 +14,63 @@ local function DB()
     if type(DeepwardUIDB) ~= "table" then DeepwardUIDB = {} end
     local d = DeepwardUIDB
     if d.frameClassColor == nil then d.frameClassColor = true end
-    if d.frameBarText  == nil then d.frameBarText  = true end
-    if d.frameFontSize == nil then d.frameFontSize = 12 end
+    if d.frameBarText   == nil then d.frameBarText   = true end
+    if d.frameFontSize  == nil then d.frameFontSize  = 12 end
+    if d.framePortraits == nil then d.framePortraits = true end   -- class-coloured portrait border
+    if d.frameThreshold == nil then d.frameThreshold = true end   -- recolour health bar on low HP
     return d
 end
 
--- health bar, power bar, unit token
+-- health bar, power bar, unit token, portrait texture
 local FRAMES = {
-    { h = "PlayerFrameHealthBar",       m = "PlayerFrameManaBar",       u = "player" },
-    { h = "TargetFrameHealthBar",       m = "TargetFrameManaBar",       u = "target" },
-    { h = "FocusFrameHealthBar",        m = "FocusFrameManaBar",        u = "focus" },
-    { h = "PetFrameHealthBar",          m = "PetFrameManaBar",          u = "pet" },
-    { h = "PartyMemberFrame1HealthBar", m = "PartyMemberFrame1ManaBar", u = "party1" },
-    { h = "PartyMemberFrame2HealthBar", m = "PartyMemberFrame2ManaBar", u = "party2" },
-    { h = "PartyMemberFrame3HealthBar", m = "PartyMemberFrame3ManaBar", u = "party3" },
-    { h = "PartyMemberFrame4HealthBar", m = "PartyMemberFrame4ManaBar", u = "party4" },
+    { h = "PlayerFrameHealthBar",       m = "PlayerFrameManaBar",       u = "player", p = "PlayerPortrait" },
+    { h = "TargetFrameHealthBar",       m = "TargetFrameManaBar",       u = "target", p = "TargetPortrait" },
+    { h = "FocusFrameHealthBar",        m = "FocusFrameManaBar",        u = "focus",  p = "FocusPortrait" },
+    { h = "PetFrameHealthBar",          m = "PetFrameManaBar",          u = "pet",    p = "PetPortrait" },
+    { h = "PartyMemberFrame1HealthBar", m = "PartyMemberFrame1ManaBar", u = "party1", p = "PartyMemberFrame1Portrait" },
+    { h = "PartyMemberFrame2HealthBar", m = "PartyMemberFrame2ManaBar", u = "party2", p = "PartyMemberFrame2Portrait" },
+    { h = "PartyMemberFrame3HealthBar", m = "PartyMemberFrame3ManaBar", u = "party3", p = "PartyMemberFrame3Portrait" },
+    { h = "PartyMemberFrame4HealthBar", m = "PartyMemberFrame4ManaBar", u = "party4", p = "PartyMemberFrame4Portrait" },
 }
+
+-- Threshold-aware health colour: low HP overrides class colour (orange < 35%, red < 20%).
+local function ApplyHealthColor(bar, unit)
+    if not bar or not bar.SetStatusBarColor then return end
+    if not DB().frameClassColor or not unit or not UnitExists(unit) or not UnitIsPlayer(unit) then return end
+    local hp, hpm = UnitHealth(unit), UnitHealthMax(unit)
+    local pct = (hpm and hpm > 0) and (hp / hpm) or 1
+    if DB().frameThreshold and pct <= 0.20 then bar:SetStatusBarColor(0.95, 0.12, 0.12)
+    elseif DB().frameThreshold and pct <= 0.35 then bar:SetStatusBarColor(1.0, 0.55, 0.0)
+    else
+        local _, cls = UnitClass(unit)
+        local c = cls and RAID_CLASS_COLORS and RAID_CLASS_COLORS[cls]
+        if c then bar:SetStatusBarColor(c.r, c.g, c.b) end
+    end
+end
+
+-- Class-coloured border ring around a portrait (X-Perl look). Created once, cached on the portrait.
+local function PortraitBorder(portraitName, unit)
+    local pt = _G[portraitName]
+    if not pt then return end
+    if not pt._dwBorder then
+        local b = CreateFrame("Frame", nil, pt:GetParent())
+        b:SetFrameLevel((pt:GetParent():GetFrameLevel() or 0) + 1)
+        b:SetPoint("TOPLEFT", pt, "TOPLEFT", -3, 3)
+        b:SetPoint("BOTTOMRIGHT", pt, "BOTTOMRIGHT", 3, -3)
+        b:SetBackdrop({ edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 12 })
+        pt._dwBorder = b
+    end
+    local b = pt._dwBorder
+    if not DB().framePortraits or not UnitExists(unit) then b:Hide(); return end
+    local r, g, bl = 0.6, 0.6, 0.6
+    if UnitIsPlayer(unit) then
+        local _, cls = UnitClass(unit)
+        local c = cls and RAID_CLASS_COLORS and RAID_CLASS_COLORS[cls]
+        if c then r, g, bl = c.r, c.g, c.b end
+    end   -- NPCs keep the neutral grey border
+    b:SetBackdropBorderColor(r, g, bl)
+    b:Show()
+end
 
 local function Short(n)
     n = n or 0
@@ -67,19 +108,14 @@ local function UpdateBarText(barName, unit, powerBar)
     fs:SetText(("%s/%s  %d%%"):format(Short(cur), Short(max), pct))
 end
 
--- Class-colour health bars for player units, after every Blizzard health update.
+-- Class-colour (+ low-HP threshold) health bars for player units, after every Blizzard health update.
 if type(UnitFrameHealthBar_Update) == "function" then
     hooksecurefunc("UnitFrameHealthBar_Update", function(bar, unit)
-        if not DB().frameClassColor or not bar or not unit then return end
-        if UnitIsPlayer(unit) and bar.SetStatusBarColor then
-            local _, cls = UnitClass(unit)
-            local c = cls and RAID_CLASS_COLORS and RAID_CLASS_COLORS[cls]
-            if c then bar:SetStatusBarColor(c.r, c.g, c.b) end
-        end
+        ApplyHealthColor(bar, unit)
     end)
 end
 
--- Live text updater (0.2s).
+-- Live updater (0.2s): bar text, threshold re-colour, portrait borders.
 local driver = CreateFrame("Frame")
 local acc = 0
 driver:SetScript("OnUpdate", function(_, e)
@@ -89,6 +125,8 @@ driver:SetScript("OnUpdate", function(_, e)
     for _, f in ipairs(FRAMES) do
         UpdateBarText(f.h, f.u, false)
         UpdateBarText(f.m, f.u, true)
+        ApplyHealthColor(_G[f.h], f.u)
+        PortraitBorder(f.p, f.u)
     end
 end)
 
@@ -106,32 +144,56 @@ ev:SetScript("OnEvent", function()
     end
 end)
 
--- Config toggles (share DeepwardUIDB with FrameMover; /dwframes covers moving, this adds style toggles).
-SLASH_DEEPWARDFRAMESTYLE1 = "/dwstyle"
-SlashCmdList["DEEPWARDFRAMESTYLE"] = function(msg)
-    msg = (msg or ""):lower()
-    local cmd, arg = msg:match("^(%S*)%s*(.*)$")
-    if cmd == "class" then
-        DB().frameClassColor = not DB().frameClassColor
-        print("|cff5599ffDeepward frames:|r class colour " .. (DB().frameClassColor and "on." or "off (reload to restore)."))
-    elseif cmd == "text" then
-        DB().frameBarText = not DB().frameBarText
-        print("|cff5599ffDeepward frames:|r bar text " .. (DB().frameBarText and "on." or "off."))
-    elseif cmd == "font" then
-        local s = tonumber(arg)
-        if s and s >= 8 and s <= 20 then
-            DB().frameFontSize = s
-            for _, f in ipairs(FRAMES) do
-                for _, bn in ipairs({ f.h, f.m }) do
-                    local bar = _G[bn]
-                    if bar and bar._dwText then bar._dwText:SetFont(STANDARD_TEXT_FONT, s, "OUTLINE") end
-                end
-            end
-            print(("|cff5599ffDeepward frames:|r font size %d."):format(s))
-        else
-            print("|cff5599ffDeepward frames:|r usage /dwstyle font 8-20")
+local function SetFontSize(s)
+    DB().frameFontSize = s
+    for _, f in ipairs(FRAMES) do
+        for _, bn in ipairs({ f.h, f.m }) do
+            local bar = _G[bn]
+            if bar and bar._dwText then bar._dwText:SetFont(STANDARD_TEXT_FONT, s, "OUTLINE") end
         end
-    else
-        print("|cff5599ffDeepward frames:|r /dwstyle class  ·  /dwstyle text  ·  /dwstyle font <8-20>")
     end
 end
+
+-- ---------------------------------------------------------------------------
+-- Unified Unit-Frames config menu (opened by /dwframes menu, /dwstyle, or the Deepward panel button).
+-- ---------------------------------------------------------------------------
+local menuFrame = CreateFrame("Frame", "DeepwardFramesMenu", UIParent, "UIDropDownMenuTemplate")
+local function ConfigMenu()
+    local locked = DeepwardUIDB and DeepwardUIDB.framesLocked
+    return {
+        { text = "Unit Frames", isTitle = true, notCheckable = true },
+        { text = "Class-coloured bars", checked = DB().frameClassColor, keepShownOnClick = true,
+          func = function() DB().frameClassColor = not DB().frameClassColor end },
+        { text = "Bar text (percent)", checked = DB().frameBarText, keepShownOnClick = true,
+          func = function() DB().frameBarText = not DB().frameBarText end },
+        { text = "Class portraits", checked = DB().framePortraits, keepShownOnClick = true,
+          func = function() DB().framePortraits = not DB().framePortraits end },
+        { text = "Low-HP colour (orange/red)", checked = DB().frameThreshold, keepShownOnClick = true,
+          func = function() DB().frameThreshold = not DB().frameThreshold end },
+        { text = "Font size", notCheckable = true, hasArrow = true, menuList = {
+            { text = "Small (11)",  checked = (DB().frameFontSize == 11), func = function() SetFontSize(11) end },
+            { text = "Normal (12)", checked = (DB().frameFontSize == 12), func = function() SetFontSize(12) end },
+            { text = "Large (14)",  checked = (DB().frameFontSize == 14), func = function() SetFontSize(14) end },
+            { text = "Huge (16)",   checked = (DB().frameFontSize == 16), func = function() SetFontSize(16) end },
+        } },
+        { text = "Frame scale", notCheckable = true, hasArrow = true, menuList = {
+            { text = "90%",  checked = (DeepwardUIDB and DeepwardUIDB.frameScale == 0.9),  func = function() DeepwardUIDB.frameScale = 0.9;  if DeepwardFrames_ApplyScale then DeepwardFrames_ApplyScale() end end },
+            { text = "100%", checked = (DeepwardUIDB and (DeepwardUIDB.frameScale or 1) == 1), func = function() DeepwardUIDB.frameScale = 1.0;  if DeepwardFrames_ApplyScale then DeepwardFrames_ApplyScale() end end },
+            { text = "110%", checked = (DeepwardUIDB and DeepwardUIDB.frameScale == 1.1),  func = function() DeepwardUIDB.frameScale = 1.1;  if DeepwardFrames_ApplyScale then DeepwardFrames_ApplyScale() end end },
+            { text = "125%", checked = (DeepwardUIDB and DeepwardUIDB.frameScale == 1.25), func = function() DeepwardUIDB.frameScale = 1.25; if DeepwardFrames_ApplyScale then DeepwardFrames_ApplyScale() end end },
+        } },
+        { text = (locked and "Unlock moving (shift-drag)" or "Lock moving"), notCheckable = true,
+          func = function() if DeepwardFrames_ToggleLock then DeepwardFrames_ToggleLock() end end },
+        { text = "Reset positions (then /reload)", notCheckable = true,
+          func = function() if DeepwardFrames_ResetPositions then DeepwardFrames_ResetPositions() end end },
+        { text = "Close", notCheckable = true, func = function() end },
+    }
+end
+
+function DeepwardFrames_Config()
+    EasyMenu(ConfigMenu(), menuFrame, "cursor", 0, 0, "MENU")
+end
+_G.DeepwardFrames_Config = DeepwardFrames_Config
+
+SLASH_DEEPWARDFRAMESTYLE1 = "/dwstyle"
+SlashCmdList["DEEPWARDFRAMESTYLE"] = function() DeepwardFrames_Config() end
