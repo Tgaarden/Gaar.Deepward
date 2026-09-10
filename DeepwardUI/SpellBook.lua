@@ -213,7 +213,17 @@ local function CurrentEntries()
   EnsureData()
   local n = table.getn(allTabsData)
   if curTabIndex > n then
-    return BuildAllHighest(allTabsData)
+    local all = BuildAllHighest(allTabsData)
+    if curTabIndex == n + 2 then
+      -- "All non-equip (Highest)": only spells NOT on any action bar (no checkmark).
+      local actionTex = BuildActionTextureSet()
+      local out = {}
+      for _, e in ipairs(all) do
+        if not (e.texture and actionTex[e.texture]) then table.insert(out, e) end
+      end
+      return out
+    end
+    return all
   end
   local entries = allTabsData[curTabIndex].entries
   if hideLower:GetChecked() then entries = HighestRanksOnly(entries) end
@@ -250,6 +260,7 @@ local function BuildTabButtons()
   local labels = {}
   for _, t in ipairs(allTabsData) do table.insert(labels, t.name) end
   table.insert(labels, "All (Highest)")
+  table.insert(labels, "All non-equip (Highest)")
 
   local x, row = 0, 0
   for idx, label in ipairs(labels) do
