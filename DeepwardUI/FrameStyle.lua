@@ -47,24 +47,27 @@ local FRAME_OF = {
 local function StyleBackdrop(f)
     local uf, pt, hb, mb = _G[FRAME_OF[f.u]], _G[f.p], _G[f.h], _G[f.m]
     if not (uf and pt and hb and mb) then return end
-    local pl, hbl, mbl = pt:GetLeft(), hb:GetLeft(), mb:GetLeft()
-    if not (pl and hbl and mbl) then return end   -- not laid out yet
+    if not (hb:GetLeft() and mb:GetLeft() and pt:GetLeft()) then return end   -- not laid out yet
     if not f._bd then
         local bd = CreateFrame("Frame", nil, uf)
-        bd:SetFrameLevel(math.max(0, uf:GetFrameLevel() - 1))   -- behind the bars/portrait
+        bd:SetFrameLevel(math.max(0, uf:GetFrameLevel() - 1))
         bd:SetBackdrop({ bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
             edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 10,
             insets = { left = 2, right = 2, top = 2, bottom = 2 } })
         bd:SetBackdropColor(0, 0, 0, 0.5)
         bd:SetBackdropBorderColor(0, 0, 0, 0.9)
         f._bd = bd
+        -- round backing disc behind the round portrait (minimap background = a dark circle)
+        local c = uf:CreateTexture(nil, "BACKGROUND")
+        c:SetTexture("Interface\\Minimap\\UI-Minimap-Background")
+        c:SetVertexColor(0, 0, 0, 0.55)
+        f._circle = c
     end
     local bd = f._bd
-    if not DB().frameBackdrop then bd:Hide(); return end
-    -- Height follows the BAR BLOCK (name -> mana), not the taller round portrait — that kept the box tight
-    -- to the actual frame instead of leaving big empty corners around the portrait.
-    local l = math.min(pl, hbl, mbl)
-    local r = math.max(pt:GetRight(), hb:GetRight(), mb:GetRight())
+    if not DB().frameBackdrop then bd:Hide(); if f._circle then f._circle:Hide() end; return end
+    -- Square panel: behind the BAR BLOCK only (name -> mana), not the portrait.
+    local l = math.min(hb:GetLeft(), mb:GetLeft())
+    local r = math.max(hb:GetRight(), mb:GetRight())
     local t = hb:GetTop()
     local b = mb:GetBottom()
     local topPad = (f.u:find("party")) and 12 or 14   -- reach up over the name row
@@ -72,6 +75,12 @@ local function StyleBackdrop(f)
     bd:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", l - 2, t + topPad)
     bd:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMLEFT", r + 2, b - 2)
     bd:Show()
+    -- Round panel: a dark circle behind the portrait.
+    local c = f._circle
+    c:ClearAllPoints()
+    c:SetPoint("CENTER", pt, "CENTER", 0, 0)
+    c:SetSize(pt:GetWidth() * 1.18, pt:GetHeight() * 1.18)
+    c:Show()
 end
 
 -- Blizzard's ornate frame/portrait border art — hidden (we don't want it). Combat/aggro flash effects are
