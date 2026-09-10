@@ -13,4 +13,5 @@ SellJunk.lua
 QuestGuard.lua
 AutoBind.lua
 Mount.lua
+FrameMover.lua
 Bindings.xml
