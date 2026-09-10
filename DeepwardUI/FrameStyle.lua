@@ -61,7 +61,13 @@ local function PortraitBorder(portraitName, unit)
         pt._dwBorder = b
     end
     local b = pt._dwBorder
-    if not DB().framePortraits or not UnitExists(unit) then b:Hide(); return end
+    if not DB().framePortraits or not UnitExists(unit) then
+        b:Hide()
+        if pt.SetTexCoord then pt:SetTexCoord(0, 1, 0, 1) end
+        return
+    end
+    -- Square the portrait: crop the round edges so it fills the square border instead of looking round.
+    if pt.SetTexCoord then pt:SetTexCoord(0.16, 0.86, 0.16, 0.86) end
     local r, g, bl = 0.6, 0.6, 0.6
     if UnitIsPlayer(unit) then
         local _, cls = UnitClass(unit)
@@ -70,6 +76,23 @@ local function PortraitBorder(portraitName, unit)
     end   -- NPCs keep the neutral grey border
     b:SetBackdropBorderColor(r, g, bl)
     b:Show()
+end
+
+-- Party frames have very thin health/mana bars — the two lines of text overlap and can't be read. Give the
+-- party bars more height and stack mana cleanly under health. Re-applied from the driver since Blizzard
+-- relays the party frames on updates.
+local function StylePartyBars(idx)
+    local hb = _G["PartyMemberFrame" .. idx .. "HealthBar"]
+    local mb = _G["PartyMemberFrame" .. idx .. "ManaBar"]
+    if not hb or not mb then return end
+    if math.abs(hb:GetHeight() - 13) > 0.5 then hb:SetHeight(13) end
+    local p, rel, rp, x, y = mb:GetPoint()
+    if rel ~= hb or math.abs((y or 0) + 1) > 0.5 then   -- re-stack mana under health if Blizzard reset it
+        mb:ClearAllPoints()
+        mb:SetPoint("TOPLEFT", hb, "BOTTOMLEFT", 0, -1)
+        mb:SetPoint("TOPRIGHT", hb, "BOTTOMRIGHT", 0, -1)
+    end
+    if math.abs(mb:GetHeight() - 9) > 0.5 then mb:SetHeight(9) end
 end
 
 local function Short(n)
@@ -128,6 +151,7 @@ driver:SetScript("OnUpdate", function(_, e)
         ApplyHealthColor(_G[f.h], f.u)
         PortraitBorder(f.p, f.u)
     end
+    for i = 1, 4 do StylePartyBars(i) end   -- keep party bars tall + readable
 end)
 
 -- Re-assert class colour when the target/focus/party changes (Blizzard repaints these).
