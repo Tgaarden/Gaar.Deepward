@@ -93,18 +93,20 @@ end
 -- Party frames have very thin health/mana bars — the two lines of text overlap and can't be read. Give the
 -- party bars more height and stack mana cleanly under health. Re-applied from the driver since Blizzard
 -- relays the party frames on updates.
--- Square portrait sized to the height of the stacked bars, placed just left of them (player/target).
+-- Square portrait sized to the FULL bar block (top of the health bar to the bottom of the last bar),
+-- placed just left of the bars. Measured with GetTop/GetBottom so it matches however many bars are shown.
 local function StyleBigPortrait(portraitName, hbName, mbName)
     local pt, hb, mb = _G[portraitName], _G[hbName], _G[mbName]
     if not (pt and hb and mb) then return end
     if not DB().framePortraits then return end
-    local h = hb:GetHeight() + mb:GetHeight() + 2   -- total height of the bars beside the portrait
+    local top, bot = hb:GetTop(), mb:GetBottom()
+    if not top or not bot then return end
+    local h = top - bot          -- full height spanned by the bars
     if h < 8 then return end
-    if math.abs(pt:GetWidth() - h) > 1 then
-        pt:ClearAllPoints()
-        pt:SetPoint("TOPRIGHT", hb, "TOPLEFT", -5, 0)
-        pt:SetSize(h, h)
-    end
+    pt:ClearAllPoints()
+    pt:SetPoint("TOPRIGHT", hb, "TOPLEFT", -5, 0)
+    pt:SetHeight(h)
+    pt:SetWidth(h)               -- square
     if pt.SetTexCoord then pt:SetTexCoord(0.16, 0.86, 0.16, 0.86) end
 end
 

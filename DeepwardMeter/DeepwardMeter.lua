@@ -45,6 +45,7 @@ DB = function()
     if d.width == nil then d.width = 240 end
     if d.height == nil then d.height = 190 end
     if d.reportChannel == nil then d.reportChannel = "PARTY" end
+    if d.shown == nil then d.shown = false end   -- persistent visibility (stays put across zoning/reload)
     return d
 end
 
@@ -542,11 +543,9 @@ frame:SetScript("OnEvent", function(self, event, ...)
     elseif event == "PLAYER_ENTERING_WORLD" then
         RefreshClassCache()
         local inside = IsInInstance()
-        if inside and not wasInside then
-            Reset()                    -- fresh instance
-            frame:Show(); Redraw()     -- auto-show on instance entry
-        end
+        if inside and not wasInside then Reset() end   -- fresh instance data only — no forced popping
         wasInside = inside
+        if DB().shown then frame:Show(); Redraw() end  -- restore the persistent visibility choice
     end
 end)
 
@@ -570,6 +569,12 @@ SlashCmdList["DEEPWARDMETER"] = function(msg)
     elseif msg == "config" then
         EasyMenu(ConfigMenu(), menuFrame, "cursor", 0, 0, "MENU")
     else
-        if frame:IsShown() then frame:Hide() else frame:Show(); Redraw() end
+        if frame:IsShown() then frame:Hide(); DB().shown = false
+        else frame:Show(); DB().shown = true; Redraw() end
     end
 end
+
+-- Restore persistent visibility at load (ADDON's SavedVariables are ready by PLAYER_LOGIN).
+local loginF = CreateFrame("Frame")
+loginF:RegisterEvent("PLAYER_LOGIN")
+loginF:SetScript("OnEvent", function() if DB().shown then frame:Show(); Redraw() end end)

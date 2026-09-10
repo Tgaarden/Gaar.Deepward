@@ -20,9 +20,10 @@ local function DB()
     local d = DeepwardThreatDB
     if d.width  == nil then d.width  = 220 end
     if d.height == nil then d.height = 150 end
-    if d.autoShow == nil then d.autoShow = true end   -- auto show/hide with combat
+    if d.autoShow == nil then d.autoShow = false end  -- optionally SHOW in combat (never auto-hides)
     if d.warn == nil then d.warn = true end           -- pull-aggro warning flash
     if d.sound == nil then d.sound = true end
+    if d.shown == nil then d.shown = false end        -- persistent visibility (stays put; no popping)
     return d
 end
 
@@ -216,16 +217,15 @@ end)
 -- Auto show/hide + events
 -- ---------------------------------------------------------------------------
 local ev = CreateFrame("Frame")
+ev:RegisterEvent("PLAYER_LOGIN")
 ev:RegisterEvent("PLAYER_REGEN_DISABLED")
-ev:RegisterEvent("PLAYER_REGEN_ENABLED")
 ev:RegisterEvent("PLAYER_TARGET_CHANGED")
 ev:RegisterEvent("UNIT_THREAT_LIST_UPDATE")
 ev:SetScript("OnEvent", function(_, event)
-    if not DB().autoShow then return end
-    if event == "PLAYER_REGEN_DISABLED" then
-        if not DeepwardThreatDB.manualHidden then frame:Show(); Redraw() end
-    elseif event == "PLAYER_REGEN_ENABLED" then
-        frame:Hide()
+    if event == "PLAYER_LOGIN" then
+        if DB().shown then frame:Show(); Redraw() end   -- restore persistent visibility
+    elseif event == "PLAYER_REGEN_DISABLED" then
+        if DB().autoShow and not frame:IsShown() then frame:Show(); DB().shown = true; Redraw() end
     else
         if frame:IsShown() then Redraw() end
     end
@@ -234,8 +234,8 @@ end)
 SLASH_DEEPWARDTHREAT1 = "/dwthreat"
 SLASH_DEEPWARDTHREAT2 = "/dwt"
 SlashCmdList["DEEPWARDTHREAT"] = function()
-    if frame:IsShown() then frame:Hide(); DeepwardThreatDB.manualHidden = true
-    else frame:Show(); DeepwardThreatDB.manualHidden = false; Redraw() end
+    if frame:IsShown() then frame:Hide(); DB().shown = false
+    else frame:Show(); DB().shown = true; Redraw() end
 end
 
 -- expose a toggle for the Deepward panel button
