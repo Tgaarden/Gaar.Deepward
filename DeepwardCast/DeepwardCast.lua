@@ -167,10 +167,11 @@ end
 
 -- Test mode: show ALL bars with a looping fake cast until toggled off.
 local testing = false
+local TEST_LABEL = { player = "Player", target = "Target", focus = "Focus", pet = "Pet" }
 local function StartTestCast(f)
     f.startMs = GetTime() * 1000; f.endMs = f.startMs + 3000; f.channel = false; f.lagFrac = nil
     f.icon:SetTexture("Interface\\Icons\\Spell_Fire_FlameBolt")
-    f.name:SetText("Test Cast"); f.bar:SetStatusBarColor(1, 0.75, 0.1); f:Show()
+    f.name:SetText("Test: " .. (TEST_LABEL[f.unit] or f.unit)); f.bar:SetStatusBarColor(1, 0.75, 0.1); f:Show()
 end
 local function SetTesting(on)
     testing = on
