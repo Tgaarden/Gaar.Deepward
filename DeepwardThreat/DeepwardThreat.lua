@@ -217,13 +217,19 @@ end)
 -- Auto show/hide + events
 -- ---------------------------------------------------------------------------
 local ev = CreateFrame("Frame")
+local wasInside = nil
 ev:RegisterEvent("PLAYER_LOGIN")
+ev:RegisterEvent("PLAYER_ENTERING_WORLD")
 ev:RegisterEvent("PLAYER_REGEN_DISABLED")
 ev:RegisterEvent("PLAYER_TARGET_CHANGED")
 ev:RegisterEvent("UNIT_THREAT_LIST_UPDATE")
 ev:SetScript("OnEvent", function(_, event)
     if event == "PLAYER_LOGIN" then
         if DB().shown then frame:Show(); Redraw() end   -- restore persistent visibility
+    elseif event == "PLAYER_ENTERING_WORLD" then
+        local inside = IsInInstance()
+        if inside and not wasInside then DB().shown = true; frame:Show(); Redraw() end  -- always show in instances
+        wasInside = inside
     elseif event == "PLAYER_REGEN_DISABLED" then
         if DB().autoShow and not frame:IsShown() then frame:Show(); DB().shown = true; Redraw() end
     else

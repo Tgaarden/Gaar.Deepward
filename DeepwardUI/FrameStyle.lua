@@ -45,8 +45,9 @@ local function StyleBackdrop(f)
     end
     local bd = f._bd
     if not DB().frameBackdrop then bd:Hide(); return end
+    local topPad = (f.u:find("party")) and 8 or 13   -- party: don't run so far above the top
     bd:ClearAllPoints()
-    bd:SetPoint("TOPLEFT", pt, "TOPLEFT", -4, 16)          -- include the name row above the portrait
+    bd:SetPoint("TOPLEFT", pt, "TOPLEFT", -4, topPad)      -- include the name row above the portrait
     bd:SetPoint("BOTTOMRIGHT", mb, "BOTTOMRIGHT", 6, -4)   -- down to the bottom bar, out to the bar's right
     bd:Show()
 end
@@ -125,22 +126,27 @@ end
 -- Portrait sized to the FULL bar block height (top of health to bottom of the last bar).
 -- side "left"  (player): portrait sits left of the bars; `wide` extends it out toward the frame edge/crown.
 -- side "right" (target, mirrored frame): portrait sits right of the bars, kept square.
-local function StyleBigPortrait(portraitName, hbName, mbName, ufName, side, wide)
+-- opts: side "left"/"right"; wide = fraction 0..1 of the space out to the frame edge to fill; fillTop = grow
+-- the portrait up to the frame's top edge (anchored at the bottom to the last bar so it grows upward).
+local function StyleBigPortrait(portraitName, hbName, mbName, ufName, side, opts)
+    opts = opts or {}
     local pt, hb, mb, uf = _G[portraitName], _G[hbName], _G[mbName], _G[ufName]
     if not (pt and hb and mb) then return end
     if not DB().framePortraits then return end
-    local top, bot = hb:GetTop(), mb:GetBottom()
-    if not top or not bot then return end
-    local h = top - bot
-    if h < 8 then return end
-    local w = h                  -- square by default
-    if wide and uf then          -- player: widen to span from the bars out to the frame's left edge (the crown)
-        local barLeft, frameLeft = hb:GetLeft(), uf:GetLeft()
-        if barLeft and frameLeft then w = math.max(h, barLeft - frameLeft - 6) end
+    local hTop, mBot = hb:GetTop(), mb:GetBottom()
+    if not hTop or not mBot then return end
+    local barH = hTop - mBot
+    if barH < 8 then return end
+    local topY = (opts.fillTop and uf and uf:GetTop()) or hTop
+    local h = topY - mBot
+    local w = barH                                   -- square base = bar-block height
+    if opts.wide and opts.wide > 0 and uf then       -- widen toward the frame's left edge (player)
+        local span = (hb:GetLeft() and uf:GetLeft()) and (hb:GetLeft() - uf:GetLeft() - 6) or barH
+        if span > barH then w = barH + (span - barH) * opts.wide end
     end
     pt:ClearAllPoints()
-    if side == "right" then pt:SetPoint("TOPLEFT", hb, "TOPRIGHT", 5, 0)
-    else pt:SetPoint("TOPRIGHT", hb, "TOPLEFT", -5, 0) end
+    if side == "right" then pt:SetPoint("BOTTOMLEFT", mb, "BOTTOMRIGHT", 5, 0)
+    else pt:SetPoint("BOTTOMRIGHT", mb, "BOTTOMLEFT", -5, 0) end
     pt:SetWidth(w); pt:SetHeight(h)
     if pt.SetTexCoord then pt:SetTexCoord(0.16, 0.86, 0.16, 0.86) end
 end
@@ -247,8 +253,9 @@ driver:SetScript("OnUpdate", function(_, e)
         StyleBackdrop(f)
     end
     for i = 1, 4 do StylePartyBars(i); StylePartyBuffs(i) end   -- tall readable bars + party buffs
-    StyleBigPortrait("PlayerPortrait", "PlayerFrameHealthBar", "PlayerFrameManaBar", "PlayerFrame", "left", true)
-    StyleBigPortrait("TargetPortrait", "TargetFrameHealthBar", "TargetFrameManaBar", "TargetFrame", "right", false)
+    StyleBigPortrait("PlayerPortrait", "PlayerFrameHealthBar", "PlayerFrameManaBar", "PlayerFrame", "left", { wide = 0.5, fillTop = true })
+    StyleBigPortrait("TargetPortrait", "TargetFrameHealthBar", "TargetFrameManaBar", "TargetFrame", "left", {})
+    StyleBigPortrait("FocusPortrait",  "FocusFrameHealthBar",  "FocusFrameManaBar",  "FocusFrame",  "left", {})
     StripBlizzardBorders()
 end)
 

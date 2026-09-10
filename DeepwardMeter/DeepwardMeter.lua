@@ -543,9 +543,11 @@ frame:SetScript("OnEvent", function(self, event, ...)
     elseif event == "PLAYER_ENTERING_WORLD" then
         RefreshClassCache()
         local inside = IsInInstance()
-        if inside and not wasInside then Reset() end   -- fresh instance data only — no forced popping
+        if inside and not wasInside then
+            Reset(); DB().shown = true                 -- entering an instance always shows the meter
+        end
         wasInside = inside
-        if DB().shown then frame:Show(); Redraw() end  -- restore the persistent visibility choice
+        if DB().shown then frame:Show(); Redraw() end  -- honour the persistent visibility choice
     end
 end)
 

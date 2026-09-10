@@ -65,8 +65,8 @@ local function MakeBar(unit)
                     insets = { left = 2, right = 2, top = 2, bottom = 2 } })
     f:SetBackdropColor(0, 0, 0, 0.6); f:SetBackdropBorderColor(0.3, 0.3, 0.35, 1)
 
-    -- spell icon (left)
-    local iconSize = def[5] + 2
+    -- spell icon (left) — square, height synced to the bar (frame height minus the 2px insets top+bottom)
+    local iconSize = def[5] - 4
     f.icon = f:CreateTexture(nil, "ARTWORK")
     f.icon:SetSize(iconSize, iconSize)
     f.icon:SetPoint("RIGHT", f, "LEFT", -2, 0)
