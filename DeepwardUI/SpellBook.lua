@@ -20,12 +20,13 @@
 ]]
 
 local _G = _G
--- Two-column layout, bigger rows. Spells fill the LEFT column top-to-bottom, then the RIGHT column
--- (column-major). ROWS is the total number of visible rows across both columns.
+-- Two-column layout, big rows. Spells flow row-major (left, right, left, right, ...): item 1 top-left,
+-- item 2 top-right, item 3 next row left, and so on. ROWS is the total visible across both columns;
+-- ROWS/COLS is the number of visible rows (lines).
 local COLS = 2
-local ROWS_PER_COL = 16
+local ROWS_PER_COL = 16                  -- visible lines per column
 local ROWS = COLS * ROWS_PER_COL
-local ROW_H = 32           -- per-row height/stride (bigger rows)
+local ROW_H = 36           -- per-row height/stride (bigger rows)
 local FRAME_W = 800        -- wide enough for two columns
 local COL_W = 366          -- content width of each column
 local COL_X = { 16, 16 + COL_W + 16 }   -- left x of column 1 / column 2
@@ -141,7 +142,7 @@ local function PlaceOnBar(slot, label)
 end
 
 -- ---------------- UI ----------------
-local BASE_HEIGHT = 680
+local BASE_HEIGHT = 748
 local f = CreateFrame("Frame", "DeepwardSpellBookFrame", UIParent)
 f:SetWidth(FRAME_W); f:SetHeight(BASE_HEIGHT)
 f:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
@@ -273,10 +274,11 @@ local function BuildTabButtons()
   f:SetHeight(BASE_HEIGHT + (tabRowCount - 1) * TAB_ROW_H)
   local listTop = TAB_ROW_Y - (tabRowCount - 1) * TAB_ROW_H - TAB_ROW_H - 10
   for i, r in ipairs(rows) do
-    local col = ((i - 1) < ROWS_PER_COL) and 1 or 2   -- fill left column first, then right
-    local posInCol = (i - 1) % ROWS_PER_COL
+    local zi = i - 1
+    local col = (zi % COLS) + 1              -- row-major: 1,2,1,2,... (left, right, left, right)
+    local line = math.floor(zi / COLS)
     r:ClearAllPoints()
-    r:SetPoint("TOPLEFT", f, "TOPLEFT", COL_X[col], listTop - posInCol * ROW_H)
+    r:SetPoint("TOPLEFT", f, "TOPLEFT", COL_X[col], listTop - line * ROW_H)
   end
 end
 
@@ -303,24 +305,26 @@ RefreshList = function()
 end
 
 for i = 1, ROWS do
-  local col = ((i - 1) < ROWS_PER_COL) and 1 or 2
-  local posInCol = (i - 1) % ROWS_PER_COL
+  local zi = i - 1
+  local col = (zi % COLS) + 1               -- row-major: left, right, left, right
+  local line = math.floor(zi / COLS)
   local row = CreateFrame("Button", nil, f)
   row:SetWidth(COL_W); row:SetHeight(ROW_H - 2)
-  row:SetPoint("TOPLEFT", f, "TOPLEFT", COL_X[col], -140 - posInCol * ROW_H)
+  row:SetPoint("TOPLEFT", f, "TOPLEFT", COL_X[col], -140 - line * ROW_H)
   row:SetHighlightTexture("Interface/QuestFrame/UI-QuestTitleHighlight")
   row:RegisterForClicks("LeftButtonUp")
   local icon = row:CreateTexture(nil, "ARTWORK")
-  icon:SetWidth(28); icon:SetHeight(28); icon:SetPoint("LEFT", 0, 0)
+  icon:SetWidth(32); icon:SetHeight(32); icon:SetPoint("LEFT", 0, 0)
   row.icon = icon
   local mark = row:CreateTexture(nil, "OVERLAY")
   mark:SetTexture(READY_CHECK_TEX)
-  mark:SetWidth(16); mark:SetHeight(16)
+  mark:SetWidth(18); mark:SetHeight(18)
   mark:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", 2, -2)
   mark:Hide()
   row.mark = mark
   local label = row:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-  label:SetPoint("LEFT", icon, "RIGHT", 8, 0); label:SetWidth(COL_W - 40); label:SetJustifyH("LEFT")
+  label:SetFont(STANDARD_TEXT_FONT, 17)   -- a touch bigger than GameFontNormalLarge
+  label:SetPoint("LEFT", icon, "RIGHT", 10, 0); label:SetWidth(COL_W - 46); label:SetJustifyH("LEFT")
   row.label = label
   row:SetScript("OnClick", function(self)
     if not self.slot then return end
