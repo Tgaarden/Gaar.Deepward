@@ -1,6 +1,7 @@
 ## Interface: 30300
 ## Title: Deepward Meter
-## Notes: Minimal group DPS meter that auto-resets on instance entry. /dwmeter to toggle.
+## Notes: Minimal group DPS meter, class-coloured. /dwmeter toggle, right-click to reset. Per-instance or per-encounter.
 ## Author: Deepward
-## Version: 1.0
+## Version: 1.1
+## SavedVariables: DeepwardMeterDB
 DeepwardMeter.lua

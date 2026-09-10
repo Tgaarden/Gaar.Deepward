@@ -27,6 +27,34 @@ local function Reset()
     wipe(data); wipe(names); total = 0; combatStart = nil; lastActivity = nil
 end
 
+-- name -> englishClass, so each line can be class-coloured. Rebuilt from the group (bots included — they
+-- report a real class). Cheap enough to refresh on each redraw.
+local classByName = {}
+local function RefreshClassCache()
+    local pn = UnitName("player"); local _, pc = UnitClass("player")
+    if pn then classByName[pn] = pc end
+    local nr = (GetNumRaidMembers and GetNumRaidMembers()) or 0
+    if nr > 0 then
+        for i = 1, nr do
+            local nm = UnitName("raid" .. i); local _, cl = UnitClass("raid" .. i)
+            if nm then classByName[nm] = cl end
+        end
+    else
+        local np = (GetNumPartyMembers and GetNumPartyMembers()) or 0
+        for i = 1, np do
+            local nm = UnitName("party" .. i); local _, cl = UnitClass("party" .. i)
+            if nm then classByName[nm] = cl end
+        end
+    end
+end
+
+local function ClassColor(name)
+    local cl = classByName[name]
+    local c = cl and RAID_CLASS_COLORS and RAID_CLASS_COLORS[cl]
+    if c then return c.r, c.g, c.b end
+    return BARCOL[1], BARCOL[2], BARCOL[3]
+end
+
 -- Only count sources in YOUR group (mine / party / raid), so mobs don't clutter the list.
 local AFF_GROUP = 0x7   -- COMBATLOG_OBJECT_AFFILIATION_MINE|PARTY|RAID
 
@@ -61,6 +89,10 @@ frame:SetPoint("CENTER", 300, 0)
 frame:SetMovable(true); frame:EnableMouse(true); frame:RegisterForDrag("LeftButton")
 frame:SetScript("OnDragStart", frame.StartMoving)
 frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
+frame:SetScript("OnMouseUp", function(_, button)
+    if button == "RightButton" then Reset(); if frame:IsShown() then Redraw() end
+        print("|cff5599ffDeepward Meter:|r reset.") end
+end)
 frame:SetBackdrop({
     bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
     edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 12,
@@ -101,6 +133,7 @@ local function ShortNum(n)
 end
 
 local function Redraw()
+    RefreshClassCache()
     table.sort(names, function(a, b) return (data[a] or 0) > (data[b] or 0) end)
     local dur = 0
     if combatStart then
@@ -117,9 +150,10 @@ local function Redraw()
             local dmg = data[nm] or 0
             local dps = dmg / dur
             r:SetValue(topDmg > 0 and (dmg / topDmg) or 0)
-            local c = (nm == me) and SELFCOL or BARCOL
-            r:SetStatusBarColor(c[1], c[2], c[3])
+            local cr, cg, cb = ClassColor(nm)
+            r:SetStatusBarColor(cr, cg, cb)
             r.left:SetText(("%d. %s"):format(i, nm))
+            r.left:SetTextColor(cr, cg, cb)
             r.right:SetText(("%s (%s)"):format(ShortNum(dps), ShortNum(dmg)))
             r:Show()
         else
@@ -138,14 +172,25 @@ end)
 -- ---------------------------------------------------------------------------
 -- Events
 -- ---------------------------------------------------------------------------
+-- Settings (SavedVariables): perEncounter = reset on each pull; otherwise accumulate over the whole instance.
+local function DB()
+    if type(DeepwardMeterDB) ~= "table" then DeepwardMeterDB = {} end
+    if DeepwardMeterDB.perEncounter == nil then DeepwardMeterDB.perEncounter = false end
+    return DeepwardMeterDB
+end
+
 frame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 frame:RegisterEvent("PLAYER_ENTERING_WORLD")
+frame:RegisterEvent("PLAYER_REGEN_DISABLED")   -- entering combat = a new pull
 frame:SetScript("OnEvent", function(self, event, ...)
     if event == "COMBAT_LOG_EVENT_UNFILTERED" then
         OnCombatLog(...)
+    elseif event == "PLAYER_REGEN_DISABLED" then
+        if DB().perEncounter then Reset() end       -- per-encounter mode: fresh numbers each pull
     elseif event == "PLAYER_ENTERING_WORLD" then
+        RefreshClassCache()
         local inside = IsInInstance()
-        if inside and not wasInside then Reset() end   -- reset at the instance entrance
+        if inside and not wasInside then Reset() end   -- whole-instance mode: reset at the entrance
         wasInside = inside
     end
 end)
@@ -160,6 +205,11 @@ SlashCmdList["DEEPWARDMETER"] = function(msg)
     if msg == "reset" then
         Reset(); Redraw()
         print("|cff5599ffDeepward Meter:|r reset.")
+    elseif msg == "encounter" or msg == "mode" then
+        DB().perEncounter = not DB().perEncounter
+        Reset(); if frame:IsShown() then Redraw() end
+        print("|cff5599ffDeepward Meter:|r " .. (DB().perEncounter
+            and "per-encounter (resets each pull)." or "whole-instance (resets at the entrance)."))
     else
         if frame:IsShown() then frame:Hide() else frame:Show(); Redraw() end
     end
