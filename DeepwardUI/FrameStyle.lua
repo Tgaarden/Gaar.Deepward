@@ -24,61 +24,6 @@ local function DB()
     return d
 end
 
--- unit token -> its top-level Blizzard frame (for the backdrop panel)
-local FRAME_OF = {
-    player = "PlayerFrame", target = "TargetFrame", focus = "FocusFrame", pet = "PetFrame",
-    party1 = "PartyMemberFrame1", party2 = "PartyMemberFrame2", party3 = "PartyMemberFrame3", party4 = "PartyMemberFrame4",
-}
--- Black, semi-transparent backing panel behind a unit frame's portrait + bars + name.
-local function StyleBackdrop(f)
-    local uf, pt, hb, mb = _G[FRAME_OF[f.u]], _G[f.p], _G[f.h], _G[f.m]
-    if not (uf and pt and hb and mb) then return end
-    if not f._bd then
-        local bd = CreateFrame("Frame", nil, uf)
-        bd:SetFrameLevel(math.max(0, uf:GetFrameLevel() - 1))   -- behind the bars/portrait
-        bd:SetBackdrop({ bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
-            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 10,
-            insets = { left = 2, right = 2, top = 2, bottom = 2 } })
-        bd:SetBackdropColor(0, 0, 0, 0.5)          -- see-through black
-        bd:SetBackdropBorderColor(0, 0, 0, 0.9)
-        f._bd = bd
-    end
-    local bd = f._bd
-    if not DB().frameBackdrop then bd:Hide(); return end
-    local topPad = (f.u:find("party")) and 8 or 13   -- party: don't run so far above the top
-    bd:ClearAllPoints()
-    bd:SetPoint("TOPLEFT", pt, "TOPLEFT", -4, topPad)      -- include the name row above the portrait
-    bd:SetPoint("BOTTOMRIGHT", mb, "BOTTOMRIGHT", 6, -4)   -- down to the bottom bar, out to the bar's right
-    bd:Show()
-end
-
--- Blizzard's ornate frame border textures (the gold rings incl. the round portrait ring). Hidden so our
--- own clean black-edged look shows. They get re-shown by Blizzard on updates, so this is re-applied.
--- Only the PARTY frame borders are stripped (party uses our square portrait look). Player/target/focus/pet
--- keep their default round Blizzard borders + all combat/aggro effects, per user preference.
-local BLIZZ_BORDERS = {
-    "PartyMemberFrame1Texture", "PartyMemberFrame2Texture", "PartyMemberFrame3Texture", "PartyMemberFrame4Texture",
-}
-local function StripBlizzardBorders()
-    -- kept for compatibility; no longer used (we keep all Blizzard borders/effects).
-end
-
--- Keep every portrait ROUND (default Blizzard look): undo any earlier square crop + square border, and make
--- sure the party frame border art (which we used to hide) is shown again.
-local function RestoreRoundPortraits()
-    for _, f in ipairs(FRAMES) do
-        local pt = _G[f.p]
-        if pt then
-            if pt.SetTexCoord then pt:SetTexCoord(0, 1, 0, 1) end
-            if pt._dwBorder then pt._dwBorder:Hide() end
-        end
-    end
-    for _, n in ipairs(BLIZZ_BORDERS) do
-        local t = _G[n]
-        if t and not t:IsShown() then t:Show() end
-    end
-end
-
 -- health bar, power bar, unit token, portrait texture
 local FRAMES = {
     { h = "PlayerFrameHealthBar",       m = "PlayerFrameManaBar",       u = "player", p = "PlayerPortrait" },
@@ -90,6 +35,66 @@ local FRAMES = {
     { h = "PartyMemberFrame3HealthBar", m = "PartyMemberFrame3ManaBar", u = "party3", p = "PartyMemberFrame3Portrait" },
     { h = "PartyMemberFrame4HealthBar", m = "PartyMemberFrame4ManaBar", u = "party4", p = "PartyMemberFrame4Portrait" },
 }
+
+-- unit token -> its top-level Blizzard frame (for the backdrop panel)
+local FRAME_OF = {
+    player = "PlayerFrame", target = "TargetFrame", focus = "FocusFrame", pet = "PetFrame",
+    party1 = "PartyMemberFrame1", party2 = "PartyMemberFrame2", party3 = "PartyMemberFrame3", party4 = "PartyMemberFrame4",
+}
+
+-- Black, semi-transparent backing panel tight around a unit frame's portrait + bars (+ name). Uses absolute
+-- screen bounds (min/max of portrait & bars) so it works for the mirrored target/focus frames too.
+local function StyleBackdrop(f)
+    local uf, pt, hb, mb = _G[FRAME_OF[f.u]], _G[f.p], _G[f.h], _G[f.m]
+    if not (uf and pt and hb and mb) then return end
+    local pl, hbl, mbl = pt:GetLeft(), hb:GetLeft(), mb:GetLeft()
+    if not (pl and hbl and mbl) then return end   -- not laid out yet
+    if not f._bd then
+        local bd = CreateFrame("Frame", nil, uf)
+        bd:SetFrameLevel(math.max(0, uf:GetFrameLevel() - 1))   -- behind the bars/portrait
+        bd:SetBackdrop({ bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 10,
+            insets = { left = 2, right = 2, top = 2, bottom = 2 } })
+        bd:SetBackdropColor(0, 0, 0, 0.5)
+        bd:SetBackdropBorderColor(0, 0, 0, 0.9)
+        f._bd = bd
+    end
+    local bd = f._bd
+    if not DB().frameBackdrop then bd:Hide(); return end
+    local l = math.min(pl, hbl, mbl)
+    local r = math.max(pt:GetRight(), hb:GetRight(), mb:GetRight())
+    local t = math.max(pt:GetTop(), hb:GetTop())
+    local b = math.min(pt:GetBottom(), mb:GetBottom())
+    local topPad = (f.u:find("party")) and 4 or 8   -- tight around the top
+    bd:ClearAllPoints()
+    bd:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", l - 3, t + topPad)
+    bd:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMLEFT", r + 3, b - 3)
+    bd:Show()
+end
+
+-- Blizzard's ornate frame/portrait border art — hidden (we don't want it). Combat/aggro flash effects are
+-- left alone. Re-applied because Blizzard re-shows them on updates.
+local BLIZZ_BORDERS = {
+    "PlayerFrameTexture", "TargetFrameTextureFrameTexture", "FocusFrameTextureFrameTexture", "PetFrameTexture",
+    "PartyMemberFrame1Texture", "PartyMemberFrame2Texture", "PartyMemberFrame3Texture", "PartyMemberFrame4Texture",
+}
+local function StripBlizzardBorders()
+    for _, n in ipairs(BLIZZ_BORDERS) do
+        local t = _G[n]
+        if t and t:IsShown() then t:Hide() end
+    end
+end
+
+-- Portraits keep their default texture (full crop); clear any leftover square crop/border from older versions.
+local function ResetPortraits()
+    for _, f in ipairs(FRAMES) do
+        local pt = _G[f.p]
+        if pt then
+            if pt.SetTexCoord then pt:SetTexCoord(0, 1, 0, 1) end
+            if pt._dwBorder then pt._dwBorder:Hide() end
+        end
+    end
+end
 
 -- Threshold-aware health colour: low HP overrides class colour (orange < 35%, red < 20%).
 local function ApplyHealthColor(bar, unit)
@@ -262,7 +267,8 @@ driver:SetScript("OnUpdate", function(_, e)
         StyleBackdrop(f)                                          -- backdrop: all frames
     end
     for i = 1, 4 do StylePartyBars(i); StylePartyBuffs(i) end     -- tall readable bars + party buffs
-    RestoreRoundPortraits()   -- ALL portraits stay round (default Blizzard look + effects); no squaring/strip
+    ResetPortraits()          -- default portrait texture (no square crop)
+    StripBlizzardBorders()    -- remove the ornate border art (aggro/combat effects kept)
 end)
 
 -- Re-assert class colour when the target/focus/party changes (Blizzard repaints these).
