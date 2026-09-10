@@ -70,16 +70,16 @@ local function StyleBackdrop(f)
     local r = math.max(hb:GetRight(), mb:GetRight())
     local t = hb:GetTop()
     local b = mb:GetBottom()
-    local topPad = (f.u:find("party")) and 12 or 14   -- reach up over the name row
+    local topPad = (f.u:find("party")) and 14 or 16   -- reach up over the name row
     bd:ClearAllPoints()
-    bd:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", l - 2, t + topPad)
-    bd:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMLEFT", r + 2, b - 2)
+    bd:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", l - 5, t + topPad)
+    bd:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMLEFT", r + 5, b - 5)
     bd:Show()
     -- Round panel: a dark circle behind the portrait.
     local c = f._circle
     c:ClearAllPoints()
     c:SetPoint("CENTER", pt, "CENTER", 0, 0)
-    c:SetSize(pt:GetWidth() * 1.18, pt:GetHeight() * 1.18)
+    c:SetSize(pt:GetWidth() * 1.35, pt:GetHeight() * 1.35)
     c:Show()
 end
 

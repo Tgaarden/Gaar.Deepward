@@ -165,11 +165,30 @@ for unit, frameName in pairs(BLIZZ_CAST) do
     end
 end
 
+-- Test mode: show ALL bars with a looping fake cast until toggled off.
+local testing = false
+local function StartTestCast(f)
+    f.startMs = GetTime() * 1000; f.endMs = f.startMs + 3000; f.channel = false; f.lagFrac = nil
+    f.icon:SetTexture("Interface\\Icons\\Spell_Fire_FlameBolt")
+    f.name:SetText("Test Cast"); f.bar:SetStatusBarColor(1, 0.75, 0.1); f:Show()
+end
+local function SetTesting(on)
+    testing = on
+    if not testing then
+        for _, u in ipairs(UNITS) do bars[u].startMs = nil; bars[u].fadeAt = nil; bars[u]:Hide() end
+    end
+end
+
 local driver = CreateFrame("Frame")
 driver:SetScript("OnUpdate", function()
     for _, u in ipairs(UNITS) do
         local f = bars[u]
-        if f:IsShown() or f.fadeAt then OnUpdate(f) end
+        if testing then
+            if not f.startMs then StartTestCast(f) end   -- (re)start -> loops until testing is off
+            OnUpdate(f)
+        elseif f:IsShown() or f.fadeAt then
+            OnUpdate(f)
+        end
     end
 end)
 
@@ -224,11 +243,8 @@ local function Menu()
     t[#t + 1] = { text = (DB().locked and "Unlock (shift-drag to move)" or "Lock position"), notCheckable = true,
         func = function() DB().locked = not DB().locked
             print("|cff5599ff" .. ADDON .. ":|r " .. (DB().locked and "locked." or "unlocked — shift-drag the bars to move.")) end }
-    t[#t + 1] = { text = "Test player bar (3s)", notCheckable = true, func = function()
-        local f = bars.player; f.startMs = GetTime() * 1000; f.endMs = f.startMs + 3000; f.channel = false
-        f.icon:SetTexture("Interface\\Icons\\Spell_Fire_FlameBolt"); f.name:SetText("Test Cast")
-        f.bar:SetStatusBarColor(1, 0.75, 0.1); f:Show()
-    end }
+    t[#t + 1] = { text = "Test bars (loop all)", checked = testing, keepShownOnClick = true,
+        func = function() SetTesting(not testing) end }
     t[#t + 1] = { text = "Close", notCheckable = true, func = function() end }
     return t
 end
