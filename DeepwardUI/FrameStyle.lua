@@ -54,24 +54,28 @@ end
 
 -- Blizzard's ornate frame border textures (the gold rings incl. the round portrait ring). Hidden so our
 -- own clean black-edged look shows. They get re-shown by Blizzard on updates, so this is re-applied.
+-- Only the PARTY frame borders are stripped (party uses our square portrait look). Player/target/focus/pet
+-- keep their default round Blizzard borders + all combat/aggro effects, per user preference.
 local BLIZZ_BORDERS = {
-    -- ornate frame/portrait borders (the round rings)
-    "PlayerFrameTexture", "TargetFrameTextureFrameTexture", "FocusFrameTextureFrameTexture", "PetFrameTexture",
     "PartyMemberFrame1Texture", "PartyMemberFrame2Texture", "PartyMemberFrame3Texture", "PartyMemberFrame4Texture",
-    -- round red combat/aggro glow + status flashes that ring the portrait
-    "PlayerStatusTexture", "PlayerAttackBackground", "PlayerAttackIcon",
-    "TargetFrameTextureFrameFlash", "TargetFrameFlash",
-    "FocusFrameTextureFrameFlash", "FocusFrameFlash", "PetAttackModeTexture",
-    "PartyMemberFrame1Flash", "PartyMemberFrame2Flash", "PartyMemberFrame3Flash", "PartyMemberFrame4Flash",
 }
 local function StripBlizzardBorders()
-    local hide = DB().frameStripBorders
+    -- kept for compatibility; no longer used (we keep all Blizzard borders/effects).
+end
+
+-- Keep every portrait ROUND (default Blizzard look): undo any earlier square crop + square border, and make
+-- sure the party frame border art (which we used to hide) is shown again.
+local function RestoreRoundPortraits()
+    for _, f in ipairs(FRAMES) do
+        local pt = _G[f.p]
+        if pt then
+            if pt.SetTexCoord then pt:SetTexCoord(0, 1, 0, 1) end
+            if pt._dwBorder then pt._dwBorder:Hide() end
+        end
+    end
     for _, n in ipairs(BLIZZ_BORDERS) do
         local t = _G[n]
-        if t then
-            if hide and t:IsShown() then t:Hide()
-            elseif not hide and not t:IsShown() then t:Show() end
-        end
+        if t and not t:IsShown() then t:Show() end
     end
 end
 
@@ -255,14 +259,10 @@ driver:SetScript("OnUpdate", function(_, e)
         UpdateBarText(f.h, f.u, false)
         UpdateBarText(f.m, f.u, true)
         ApplyHealthColor(_G[f.h], f.u)
-        PortraitBorder(f.p, f.u)
-        StyleBackdrop(f)
+        StyleBackdrop(f)                                          -- backdrop: all frames
     end
-    for i = 1, 4 do StylePartyBars(i); StylePartyBuffs(i) end   -- tall readable bars + party buffs
-    StyleBigPortrait("PlayerPortrait",      "PlayerFrameHealthBar", "PlayerFrameManaBar", "PlayerFrame", "left",  {})
-    StyleBigPortrait("TargetFramePortrait", "TargetFrameHealthBar", "TargetFrameManaBar", "TargetFrame", "right", {})
-    StyleBigPortrait("FocusFramePortrait",  "FocusFrameHealthBar",  "FocusFrameManaBar",  "FocusFrame",  "right", {})
-    StripBlizzardBorders()
+    for i = 1, 4 do StylePartyBars(i); StylePartyBuffs(i) end     -- tall readable bars + party buffs
+    RestoreRoundPortraits()   -- ALL portraits stay round (default Blizzard look + effects); no squaring/strip
 end)
 
 -- Re-assert class colour when the target/focus/party changes (Blizzard repaints these).
@@ -301,12 +301,8 @@ local function ConfigMenu()
           func = function() DB().frameClassColor = not DB().frameClassColor end },
         { text = "Bar text (percent)", checked = DB().frameBarText, keepShownOnClick = true,
           func = function() DB().frameBarText = not DB().frameBarText end },
-        { text = "Class portraits", checked = DB().framePortraits, keepShownOnClick = true,
-          func = function() DB().framePortraits = not DB().framePortraits end },
         { text = "Low-HP colour (orange/red)", checked = DB().frameThreshold, keepShownOnClick = true,
           func = function() DB().frameThreshold = not DB().frameThreshold end },
-        { text = "Hide Blizzard borders (black edge)", checked = DB().frameStripBorders, keepShownOnClick = true,
-          func = function() DB().frameStripBorders = not DB().frameStripBorders; StripBlizzardBorders() end },
         { text = "Black backing panel", checked = DB().frameBackdrop, keepShownOnClick = true,
           func = function() DB().frameBackdrop = not DB().frameBackdrop end },
         { text = "Show party buffs", checked = DB().framePartyBuffs, keepShownOnClick = true,

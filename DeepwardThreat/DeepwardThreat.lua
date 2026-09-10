@@ -76,7 +76,8 @@ frame:SetBackdrop({
 frame:SetBackdropColor(0.05, 0.07, 0.12, 0.92)
 frame:SetBackdropBorderColor(0.35, 0.55, 0.9, 1)
 frame:Hide()
-table.insert(UISpecialFrames, "DeepwardThreatFrame")
+-- NOT added to UISpecialFrames on purpose: ESC must not close the threat meter (it shouldn't close with the
+-- Deepward panel). Toggle it via /dwthreat or the panel button.
 
 local function SavePos()
     local d = DB()
