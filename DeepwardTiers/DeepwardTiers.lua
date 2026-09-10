@@ -378,7 +378,19 @@ end
 -- The server validates the map belongs to your current tier; an omitted map auto-routes to the
 -- first løype you haven't cleared. When a CUSTOM bot comp is set (not Auto) and it fills the free
 -- slots exactly, it's appended as "<t>-<h>-<d>"; otherwise the server auto-fills the roles.
+-- Tiers temporarily closed to entry (addon-side gate; toggle here). Tier 9 raids are locked while changes
+-- are made. Only a char whose current tier is locked can reach that tier via .enter, so gating on the live
+-- current tier is enough.
+local DW_LOCKED_TIERS = { [9] = true }
+local function TierLocked()
+    return DeepwardLive and DeepwardLive.tier and DW_LOCKED_TIERS[DeepwardLive.tier]
+end
+
 local function EnterDungeon(seg)
+    if TierLocked() then
+        print("|cffff6666Deepward:|r Tier 9 raids are temporarily closed while changes are being made.")
+        return
+    end
     EnsureDB()
     local role = DeepwardTiersDB.role or "dps"
     local cmd = ".enter " .. role
@@ -1494,6 +1506,10 @@ local function CreateUI()
     frame.playersQueued = false
     frame.playersBtn:SetScript("OnClick", function()
         if IsInInstance() then return end
+        if TierLocked() then
+            print("|cffff6666Deepward:|r Tier 9 raids are temporarily closed while changes are being made.")
+            return
+        end
         if frame.playersQueued then
             SendCmd(".dwqueue leave")
         else
