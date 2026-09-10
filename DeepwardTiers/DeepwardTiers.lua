@@ -1259,6 +1259,11 @@ local function CreateUI()
     DwTopToggle("Frames", 62, tx, function()
         if _G.DeepwardFrames_Config then _G.DeepwardFrames_Config()
         else DEFAULT_CHAT_FRAME:AddMessage("|cffff6666Deepward:|r DeepwardUI addon not loaded.") end
+    end); tx = tx + 62 + 4
+    -- Threat: toggle the threat meter.
+    DwTopToggle("Threat", 60, tx, function()
+        if _G.DeepwardThreat_Toggle then _G.DeepwardThreat_Toggle()
+        else DEFAULT_CHAT_FRAME:AddMessage("|cffff6666Deepward:|r DeepwardThreat addon not loaded.") end
     end)
 
     frame.summary = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlightLarge")

@@ -1,0 +1,7 @@
+## Interface: 30300
+## Title: Deepward Threat
+## Notes: Real-time group threat meter for your target (WotLK threat API). /dwthreat to toggle, right-click for options.
+## Author: Deepward
+## Version: 1.0
+## SavedVariables: DeepwardThreatDB
+DeepwardThreat.lua
