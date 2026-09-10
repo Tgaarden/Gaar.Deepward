@@ -61,14 +61,16 @@ local function StyleBackdrop(f)
     end
     local bd = f._bd
     if not DB().frameBackdrop then bd:Hide(); return end
+    -- Height follows the BAR BLOCK (name -> mana), not the taller round portrait — that kept the box tight
+    -- to the actual frame instead of leaving big empty corners around the portrait.
     local l = math.min(pl, hbl, mbl)
     local r = math.max(pt:GetRight(), hb:GetRight(), mb:GetRight())
-    local t = math.max(pt:GetTop(), hb:GetTop())
-    local b = math.min(pt:GetBottom(), mb:GetBottom())
-    local topPad = (f.u:find("party")) and 4 or 8   -- tight around the top
+    local t = hb:GetTop()
+    local b = mb:GetBottom()
+    local topPad = (f.u:find("party")) and 12 or 14   -- reach up over the name row
     bd:ClearAllPoints()
-    bd:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", l - 3, t + topPad)
-    bd:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMLEFT", r + 3, b - 3)
+    bd:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", l - 2, t + topPad)
+    bd:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMLEFT", r + 2, b - 2)
     bd:Show()
 end
 
