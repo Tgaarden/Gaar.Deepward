@@ -84,15 +84,31 @@ end
 -- Display
 -- ---------------------------------------------------------------------------
 local Redraw   -- forward-declared: the right-click handler below is defined before Redraw's body
+local DB       -- forward-declared: same (the right-click menu reads/writes settings)
 local frame = CreateFrame("Frame", "DeepwardMeterFrame", UIParent)
 frame:SetSize(220, 20 + MAXROWS * 16 + 8)
 frame:SetPoint("CENTER", 300, 0)
 frame:SetMovable(true); frame:EnableMouse(true); frame:RegisterForDrag("LeftButton")
 frame:SetScript("OnDragStart", frame.StartMoving)
 frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
+-- Right-click menu: Reset + a checkable Per-encounter toggle (no more accidental auto-reset on right-click).
+local menuFrame = CreateFrame("Frame", "DeepwardMeterMenu", UIParent, "UIDropDownMenuTemplate")
+local function BuildMenu()
+    return {
+        { text = "Deepward Meter", isTitle = true, notCheckable = true },
+        { text = "Reset now", notCheckable = true, func = function()
+            Reset(); if frame:IsShown() then Redraw() end
+        end },
+        { text = "Per-encounter (reset each pull)", checked = DB().perEncounter, keepShownOnClick = false,
+          func = function()
+            DB().perEncounter = not DB().perEncounter
+            Reset(); if frame:IsShown() then Redraw() end
+        end },
+        { text = "Close", notCheckable = true, func = function() end },
+    }
+end
 frame:SetScript("OnMouseUp", function(_, button)
-    if button == "RightButton" then Reset(); if frame:IsShown() then Redraw() end
-        print("|cff5599ffDeepward Meter:|r reset.") end
+    if button == "RightButton" then EasyMenu(BuildMenu(), menuFrame, "cursor", 0, 0, "MENU") end
 end)
 frame:SetBackdrop({
     bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
@@ -175,7 +191,7 @@ end)
 -- Events
 -- ---------------------------------------------------------------------------
 -- Settings (SavedVariables): perEncounter = reset on each pull; otherwise accumulate over the whole instance.
-local function DB()
+DB = function()
     if type(DeepwardMeterDB) ~= "table" then DeepwardMeterDB = {} end
     if DeepwardMeterDB.perEncounter == nil then DeepwardMeterDB.perEncounter = false end
     return DeepwardMeterDB
