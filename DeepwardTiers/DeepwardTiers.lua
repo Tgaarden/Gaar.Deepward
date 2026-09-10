@@ -1271,6 +1271,11 @@ local function CreateUI()
         if _G.DeepwardCast_Config then _G.DeepwardCast_Config()
         else DEFAULT_CHAT_FRAME:AddMessage("|cffff6666Deepward:|r DeepwardCast addon not loaded.") end
     end)
+    -- CC (cooldown count) next to Cast.
+    DwTopToggle("CC", 52, 14 + 62 + 4, -38, function()
+        if _G.DeepwardCC_Config then _G.DeepwardCC_Config()
+        else DEFAULT_CHAT_FRAME:AddMessage("|cffff6666Deepward:|r DeepwardCC addon not loaded.") end
+    end)
 
     frame.summary = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlightLarge")
     frame.summary:SetPoint("TOP", title, "BOTTOM", 0, -8)
