@@ -1238,16 +1238,10 @@ local function CreateUI()
         if SlashCmdList["DEEPWARDMETER"] then SlashCmdList["DEEPWARDMETER"]("")
         else DEFAULT_CHAT_FRAME:AddMessage("|cffff6666Deepward:|r DWMeter addon not loaded.") end
     end); tx = tx + 72 + 4
+    -- Bots: always SHOW + recentre the bar (uses /dwbotsreset), so it's a reliable "bring it back" button.
     DwTopToggle("Bots", 52, tx, function()
-        if SlashCmdList["DEEPWARDBOTS"] then SlashCmdList["DEEPWARDBOTS"]("") end
-    end); tx = tx + 52 + 4
-    DwTopToggle("Map", 52, tx, function()
-        if _G.DeepwardTiers_MapToggle then _G.DeepwardTiers_MapToggle() end
-    end); tx = tx + 52 + 4
-    DwTopToggle("Spells", 60, tx, function()
-        if _G.DeepwardSpellBook_Toggle then _G.DeepwardSpellBook_Toggle()
-        elseif SlashCmdList["DEEPWARDSPELLBOOK"] then SlashCmdList["DEEPWARDSPELLBOOK"]("")
-        else DEFAULT_CHAT_FRAME:AddMessage("|cffff6666Deepward:|r Spell Book addon not loaded.") end
+        if SlashCmdList["DEEPWARDBOTSRESET"] then SlashCmdList["DEEPWARDBOTSRESET"]("")
+        elseif SlashCmdList["DEEPWARDBOTS"] then SlashCmdList["DEEPWARDBOTS"]("") end
     end)
 
     frame.summary = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlightLarge")

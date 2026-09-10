@@ -83,6 +83,7 @@ end
 -- ---------------------------------------------------------------------------
 -- Display
 -- ---------------------------------------------------------------------------
+local Redraw   -- forward-declared: the right-click handler below is defined before Redraw's body
 local frame = CreateFrame("Frame", "DeepwardMeterFrame", UIParent)
 frame:SetSize(220, 20 + MAXROWS * 16 + 8)
 frame:SetPoint("CENTER", 300, 0)
@@ -132,7 +133,7 @@ local function ShortNum(n)
     return tostring(math.floor(n))
 end
 
-local function Redraw()
+Redraw = function()
     RefreshClassCache()
     table.sort(names, function(a, b) return (data[a] or 0) > (data[b] or 0) end)
     local dur = 0
@@ -153,8 +154,9 @@ local function Redraw()
             local cr, cg, cb = ClassColor(nm)
             r:SetStatusBarColor(cr, cg, cb)
             r.left:SetText(("%d. %s"):format(i, nm))
-            r.left:SetTextColor(cr, cg, cb)
+            r.left:SetTextColor(1, 1, 1)                 -- white text (class colour is on the bar)
             r.right:SetText(("%s (%s)"):format(ShortNum(dps), ShortNum(dmg)))
+            r.right:SetTextColor(1, 1, 1)
             r:Show()
         else
             r:Hide()
