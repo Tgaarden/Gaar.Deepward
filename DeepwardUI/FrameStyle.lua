@@ -20,6 +20,7 @@ local function DB()
     if d.frameThreshold == nil then d.frameThreshold = true end   -- recolour health bar on low HP
     if d.frameStripBorders == nil then d.frameStripBorders = true end   -- hide Blizzard's ornate borders
     if d.frameBackdrop == nil then d.frameBackdrop = true end           -- black see-through backing panel
+    if d.framePartyBuffs == nil then d.framePartyBuffs = true end        -- always show buffs on party members
     return d
 end
 
@@ -121,21 +122,53 @@ end
 -- Party frames have very thin health/mana bars — the two lines of text overlap and can't be read. Give the
 -- party bars more height and stack mana cleanly under health. Re-applied from the driver since Blizzard
 -- relays the party frames on updates.
--- Square portrait sized to the FULL bar block (top of the health bar to the bottom of the last bar),
--- placed just left of the bars. Measured with GetTop/GetBottom so it matches however many bars are shown.
-local function StyleBigPortrait(portraitName, hbName, mbName)
-    local pt, hb, mb = _G[portraitName], _G[hbName], _G[mbName]
+-- Portrait sized to the FULL bar block height (top of health to bottom of the last bar).
+-- side "left"  (player): portrait sits left of the bars; `wide` extends it out toward the frame edge/crown.
+-- side "right" (target, mirrored frame): portrait sits right of the bars, kept square.
+local function StyleBigPortrait(portraitName, hbName, mbName, ufName, side, wide)
+    local pt, hb, mb, uf = _G[portraitName], _G[hbName], _G[mbName], _G[ufName]
     if not (pt and hb and mb) then return end
     if not DB().framePortraits then return end
     local top, bot = hb:GetTop(), mb:GetBottom()
     if not top or not bot then return end
-    local h = top - bot          -- full height spanned by the bars
+    local h = top - bot
     if h < 8 then return end
+    local w = h                  -- square by default
+    if wide and uf then          -- player: widen to span from the bars out to the frame's left edge (the crown)
+        local barLeft, frameLeft = hb:GetLeft(), uf:GetLeft()
+        if barLeft and frameLeft then w = math.max(h, barLeft - frameLeft - 6) end
+    end
     pt:ClearAllPoints()
-    pt:SetPoint("TOPRIGHT", hb, "TOPLEFT", -5, 0)
-    pt:SetHeight(h)
-    pt:SetWidth(h)               -- square
+    if side == "right" then pt:SetPoint("TOPLEFT", hb, "TOPRIGHT", 5, 0)
+    else pt:SetPoint("TOPRIGHT", hb, "TOPLEFT", -5, 0) end
+    pt:SetWidth(w); pt:SetHeight(h)
     if pt.SetTexCoord then pt:SetTexCoord(0.16, 0.86, 0.16, 0.86) end
+end
+
+-- Always-show buffs on party members: a small row of buff icons under each party frame.
+local function StylePartyBuffs(idx)
+    local pf = _G["PartyMemberFrame" .. idx]
+    local mb = _G["PartyMemberFrame" .. idx .. "ManaBar"]
+    if not (pf and mb) then return end
+    pf._dwBuffs = pf._dwBuffs or {}
+    local on = DB().framePartyBuffs
+    local unit = "party" .. idx
+    for i = 1, 8 do
+        local b = pf._dwBuffs[i]
+        local name, _, icon = (on and UnitExists(unit)) and UnitBuff(unit, i) or nil
+        if name and icon then
+            if not b then
+                b = pf:CreateTexture(nil, "OVERLAY")
+                b:SetSize(15, 15)
+                b:SetPoint("TOPLEFT", mb, "BOTTOMLEFT", (i - 1) * 17, -2)
+                b:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+                pf._dwBuffs[i] = b
+            end
+            b:SetTexture(icon); b:Show()
+        elseif b then
+            b:Hide()
+        end
+    end
 end
 
 local PARTY_HB_W, PARTY_HB_H, PARTY_MB_H = 112, 16, 11
@@ -213,9 +246,9 @@ driver:SetScript("OnUpdate", function(_, e)
         PortraitBorder(f.p, f.u)
         StyleBackdrop(f)
     end
-    for i = 1, 4 do StylePartyBars(i) end   -- keep party bars tall + readable
-    StyleBigPortrait("PlayerPortrait", "PlayerFrameHealthBar", "PlayerFrameManaBar")
-    StyleBigPortrait("TargetPortrait", "TargetFrameHealthBar", "TargetFrameManaBar")
+    for i = 1, 4 do StylePartyBars(i); StylePartyBuffs(i) end   -- tall readable bars + party buffs
+    StyleBigPortrait("PlayerPortrait", "PlayerFrameHealthBar", "PlayerFrameManaBar", "PlayerFrame", "left", true)
+    StyleBigPortrait("TargetPortrait", "TargetFrameHealthBar", "TargetFrameManaBar", "TargetFrame", "right", false)
     StripBlizzardBorders()
 end)
 
@@ -263,6 +296,8 @@ local function ConfigMenu()
           func = function() DB().frameStripBorders = not DB().frameStripBorders; StripBlizzardBorders() end },
         { text = "Black backing panel", checked = DB().frameBackdrop, keepShownOnClick = true,
           func = function() DB().frameBackdrop = not DB().frameBackdrop end },
+        { text = "Show party buffs", checked = DB().framePartyBuffs, keepShownOnClick = true,
+          func = function() DB().framePartyBuffs = not DB().framePartyBuffs end },
         { text = "Font size", notCheckable = true, hasArrow = true, menuList = {
             { text = "Small (11)",  checked = (DB().frameFontSize == 11), func = function() SetFontSize(11) end },
             { text = "Normal (12)", checked = (DB().frameFontSize == 12), func = function() SetFontSize(12) end },

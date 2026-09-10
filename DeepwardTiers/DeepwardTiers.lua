@@ -1237,36 +1237,37 @@ local function CreateUI()
 
     -- Top-left toggle row: show/hide Deepward's toggleable windows. Each toggle is resolved at click time
     -- (slash handler or global by name) so cross-addon load order never matters.
-    local function DwTopToggle(label, w, x, fn)
+    local function DwTopToggle(label, w, x, y, fn)
         local b = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
         b:SetSize(w, 22)
-        b:SetPoint("TOPLEFT", x, -14)
+        b:SetPoint("TOPLEFT", x, y)
         b:SetText(label)
         b:SetScript("OnClick", fn)
         return b
     end
+    -- Row 1: Meter · Bots · Frames · Threat.   Row 2: Cast (under Meter).
     local tx = 14
-    DwTopToggle("DWMeter", 72, tx, function()
+    DwTopToggle("Meter", 62, tx, -14, function()
         if SlashCmdList["DEEPWARDMETER"] then SlashCmdList["DEEPWARDMETER"]("")
-        else DEFAULT_CHAT_FRAME:AddMessage("|cffff6666Deepward:|r DWMeter addon not loaded.") end
-    end); tx = tx + 72 + 4
+        else DEFAULT_CHAT_FRAME:AddMessage("|cffff6666Deepward:|r Meter addon not loaded.") end
+    end); tx = tx + 62 + 4
     -- Bots: always SHOW + recentre the bar (uses /dwbotsreset), so it's a reliable "bring it back" button.
-    DwTopToggle("Bots", 52, tx, function()
+    DwTopToggle("Bots", 52, tx, -14, function()
         if SlashCmdList["DEEPWARDBOTSRESET"] then SlashCmdList["DEEPWARDBOTSRESET"]("")
         elseif SlashCmdList["DEEPWARDBOTS"] then SlashCmdList["DEEPWARDBOTS"]("") end
     end); tx = tx + 52 + 4
     -- Frames: open the unit-frames config (class colour, portraits, low-HP, text, scale, move/lock/reset).
-    DwTopToggle("Frames", 62, tx, function()
+    DwTopToggle("Frames", 62, tx, -14, function()
         if _G.DeepwardFrames_Config then _G.DeepwardFrames_Config()
         else DEFAULT_CHAT_FRAME:AddMessage("|cffff6666Deepward:|r DeepwardUI addon not loaded.") end
     end); tx = tx + 62 + 4
     -- Threat: toggle the threat meter.
-    DwTopToggle("Threat", 60, tx, function()
+    DwTopToggle("Threat", 60, tx, -14, function()
         if _G.DeepwardThreat_Toggle then _G.DeepwardThreat_Toggle()
         else DEFAULT_CHAT_FRAME:AddMessage("|cffff6666Deepward:|r DeepwardThreat addon not loaded.") end
-    end); tx = tx + 60 + 4
-    -- Cast: open the cast-bar config.
-    DwTopToggle("Cast", 56, tx, function()
+    end)
+    -- Cast on the second row, under Meter.
+    DwTopToggle("Cast", 62, 14, -38, function()
         if _G.DeepwardCast_Config then _G.DeepwardCast_Config()
         else DEFAULT_CHAT_FRAME:AddMessage("|cffff6666Deepward:|r DeepwardCast addon not loaded.") end
     end)
