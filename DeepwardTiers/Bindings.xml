@@ -32,4 +32,7 @@
     <Binding name="DEEPWARD_BOT_RANGED" header="DEEPWARDBOTS">
         DeepwardBot_Cmd("ranged")
     </Binding>
+    <Binding name="DEEPWARD_MASSLOOT" header="DEEPWARD">
+        DeepwardMassLoot_Cmd()
+    </Binding>
 </Bindings>

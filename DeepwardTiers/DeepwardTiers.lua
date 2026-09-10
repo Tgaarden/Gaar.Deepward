@@ -2257,3 +2257,10 @@ _G.BINDING_NAME_DEEPWARD_BOT_PULL    = "Send a bot to pull my target"
 _G.BINDING_NAME_DEEPWARD_BOT_STOP    = "All bots: Stop & disengage"
 _G.BINDING_NAME_DEEPWARD_BOT_MELEE   = "All bots: Melee range"
 _G.BINDING_NAME_DEEPWARD_BOT_RANGED  = "All bots: Ranged range"
+
+-- Mass loot: loot every nearby corpse in one press (server-side .dwloot). Keybind + /dwloot.
+function DeepwardMassLoot_Cmd() SendCmd(".dwloot") end
+_G.DeepwardMassLoot_Cmd = DeepwardMassLoot_Cmd
+_G.BINDING_NAME_DEEPWARD_MASSLOOT = "Mass loot (nearby corpses)"
+SLASH_DEEPWARDLOOT1 = "/dwloot"
+SlashCmdList["DEEPWARDLOOT"] = function() SendCmd(".dwloot") end
