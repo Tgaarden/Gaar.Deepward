@@ -55,8 +55,14 @@ end
 -- Blizzard's ornate frame border textures (the gold rings incl. the round portrait ring). Hidden so our
 -- own clean black-edged look shows. They get re-shown by Blizzard on updates, so this is re-applied.
 local BLIZZ_BORDERS = {
+    -- ornate frame/portrait borders (the round rings)
     "PlayerFrameTexture", "TargetFrameTextureFrameTexture", "FocusFrameTextureFrameTexture", "PetFrameTexture",
     "PartyMemberFrame1Texture", "PartyMemberFrame2Texture", "PartyMemberFrame3Texture", "PartyMemberFrame4Texture",
+    -- round red combat/aggro glow + status flashes that ring the portrait
+    "PlayerStatusTexture", "PlayerAttackBackground", "PlayerAttackIcon",
+    "TargetFrameTextureFrameFlash", "TargetFrameFlash",
+    "FocusFrameTextureFrameFlash", "FocusFrameFlash", "PetAttackModeTexture",
+    "PartyMemberFrame1Flash", "PartyMemberFrame2Flash", "PartyMemberFrame3Flash", "PartyMemberFrame4Flash",
 }
 local function StripBlizzardBorders()
     local hide = DB().frameStripBorders

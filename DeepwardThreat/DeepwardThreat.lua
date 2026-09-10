@@ -227,9 +227,7 @@ ev:SetScript("OnEvent", function(_, event)
     if event == "PLAYER_LOGIN" then
         if DB().shown then frame:Show(); Redraw() end   -- restore persistent visibility
     elseif event == "PLAYER_ENTERING_WORLD" then
-        local inside = IsInInstance()
-        if inside and not wasInside then DB().shown = true; frame:Show(); Redraw() end  -- always show in instances
-        wasInside = inside
+        if IsInInstance() then DB().shown = true; frame:Show(); Redraw() end  -- always show while in an instance
     elseif event == "PLAYER_REGEN_DISABLED" then
         if DB().autoShow and not frame:IsShown() then frame:Show(); DB().shown = true; Redraw() end
     else
