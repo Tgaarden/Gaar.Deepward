@@ -314,7 +314,10 @@ local function ParseLive(message)
     local clears = {}                                  -- [segId] = lifetime completion count ("CN=seg:n,...")
     local cn = message:match("CN=([%d:,]*)")
     if cn then for seg, n in cn:gmatch("(%d+):(%d+)") do clears[tonumber(seg)] = tonumber(n) end end
-    DeepwardLive = { tier = t, max = tonumber(message:match("M=(%d+)")) or t, cleared = cleared, killed = killed, admin = admin, clears = clears }
+    local runDone = {}                                  -- [segId]=true: current run completed, resets fresh next entry ("RC=")
+    local rc = message:match("RC=([%d,]*)")
+    if rc then for id in rc:gmatch("%d+") do runDone[tonumber(id)] = true end end
+    DeepwardLive = { tier = t, max = tonumber(message:match("M=(%d+)")) or t, cleared = cleared, killed = killed, admin = admin, clears = clears, runDone = runDone }
 end
 
 -- Live group roster, sent by the server as its own short "DEEPWARD\tG=name:role,name:role,..." message
@@ -417,6 +420,11 @@ end
 -- Lifetime completion count for a dungeon (times its whole instance has been cleared).
 local function DungeonClears(d)
     return DeepwardLive and DeepwardLive.clears and d and DeepwardLive.clears[d.seg] or 0
+end
+
+-- This instance's CURRENT run is completed (repeatable tiers) -> it auto-resets to a fresh run on next entry.
+local function RunResetsNext(d)
+    return DeepwardLive and DeepwardLive.runDone and d and DeepwardLive.runDone[d.seg] or false
 end
 
 -- Required clears per tier (N of M instances). Mirrors the server's tier.required_clears.
@@ -805,6 +813,10 @@ local function RenderDetail(tier)
         local completedN = DungeonClears(sel)
         if completedN > 0 then
             table.insert(lines, ("|cffffd100Completed:|r |cff40ff40%d\195\151|r"):format(completedN))
+        end
+        -- Repeatable tiers (8/9): once cleared, tell the player the next entry starts a fresh run.
+        if (tier.id == 8 or tier.id == 9) and RunResetsNext(sel) then
+            table.insert(lines, "|cff40ff40Klart!|r |cffa0e0a0Neste gang du g\195\165r inn starter du fresh (alt respawner).|r")
         end
         if sel.bosses and #sel.bosses > 0 then
             local killedN = 0
