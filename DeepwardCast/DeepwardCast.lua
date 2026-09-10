@@ -104,15 +104,14 @@ local function StartCast(f)
     if notInt then f.bar:SetStatusBarColor(0.6, 0.6, 0.6)
     elseif channel then f.bar:SetStatusBarColor(0.2, 0.75, 0.3)
     else f.bar:SetStatusBarColor(1.0, 0.75, 0.1) end
-    -- latency safe-zone: the last <lag> ms of the cast (only meaningful for the player's own casts)
-    f.lag:Hide()
-    if DB().showLatency and f.unit == "player" then
+    -- latency safe-zone: the last <lag> ms of the cast. Compute the fraction here, apply the width in
+    -- OnUpdate — the bar has no real width until it's shown, so setting it now gave a zero-width (invisible)
+    -- zone. Player's own casts only, not channels.
+    f.lag:Hide(); f.lagFrac = nil
+    if DB().showLatency and f.unit == "player" and not channel then
         local _, _, _, lagMs = GetNetStats()
-        local dur = (endMs - startMs)
-        if lagMs and lagMs > 0 and dur > 0 then
-            f.lag:SetWidth((f.bar:GetWidth()) * math.min(lagMs / dur, 1))
-            f.lag:Show()
-        end
+        local dur = endMs - startMs
+        if lagMs and lagMs > 0 and dur > 0 then f.lagFrac = math.min(lagMs / dur, 1) end
     end
     f:Show()
 end
@@ -141,6 +140,7 @@ local function OnUpdate(f)
     if frac < 0 then frac = 0 elseif frac > 1 then frac = 1 end
     if f.channel then frac = 1 - frac end   -- channels drain
     f.bar:SetValue(frac)
+    if f.lagFrac then f.lag:SetWidth(f.bar:GetWidth() * f.lagFrac); f.lag:Show() end
     local remain = (f.endMs - now) / 1000
     if remain < 0 then remain = 0 end
     f.time:SetText(("%.1f"):format(remain))
@@ -151,6 +151,19 @@ end
 -- Build bars + drive them
 -- ---------------------------------------------------------------------------
 for _, u in ipairs(UNITS) do bars[u] = MakeBar(u) end
+
+-- Hide Blizzard's own cast bars while ours are enabled (per unit). Hooked OnShow so toggling works live
+-- (turn our bar off -> Blizzard's shows again). CastingBarFrame = player, TargetFrameSpellBar = target, etc.
+local BLIZZ_CAST = { player = "CastingBarFrame", target = "TargetFrameSpellBar",
+                     focus = "FocusFrameSpellBar", pet = "PetCastingBarFrame" }
+for unit, frameName in pairs(BLIZZ_CAST) do
+    local bf = _G[frameName]
+    if bf and not bf._dwHooked then
+        bf._dwHooked = true
+        bf:HookScript("OnShow", function(self) if DB().show[unit] then self:Hide() end end)
+        if DB().show[unit] and bf:IsShown() then bf:Hide() end
+    end
+end
 
 local driver = CreateFrame("Frame")
 driver:SetScript("OnUpdate", function()

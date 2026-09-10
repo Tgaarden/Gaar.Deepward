@@ -93,18 +93,37 @@ end
 -- Party frames have very thin health/mana bars — the two lines of text overlap and can't be read. Give the
 -- party bars more height and stack mana cleanly under health. Re-applied from the driver since Blizzard
 -- relays the party frames on updates.
+-- Square portrait sized to the height of the stacked bars, placed just left of them (player/target).
+local function StyleBigPortrait(portraitName, hbName, mbName)
+    local pt, hb, mb = _G[portraitName], _G[hbName], _G[mbName]
+    if not (pt and hb and mb) then return end
+    if not DB().framePortraits then return end
+    local h = hb:GetHeight() + mb:GetHeight() + 2   -- total height of the bars beside the portrait
+    if h < 8 then return end
+    if math.abs(pt:GetWidth() - h) > 1 then
+        pt:ClearAllPoints()
+        pt:SetPoint("TOPRIGHT", hb, "TOPLEFT", -5, 0)
+        pt:SetSize(h, h)
+    end
+    if pt.SetTexCoord then pt:SetTexCoord(0.16, 0.86, 0.16, 0.86) end
+end
+
+local PARTY_HB_W, PARTY_HB_H, PARTY_MB_H = 112, 16, 11
 local function StylePartyBars(idx)
     local hb = _G["PartyMemberFrame" .. idx .. "HealthBar"]
     local mb = _G["PartyMemberFrame" .. idx .. "ManaBar"]
+    local nm = _G["PartyMemberFrame" .. idx .. "Name"]
     if not hb or not mb then return end
-    if math.abs(hb:GetHeight() - 13) > 0.5 then hb:SetHeight(13) end
-    local p, rel, rp, x, y = mb:GetPoint()
-    if rel ~= hb or math.abs((y or 0) + 1) > 0.5 then   -- re-stack mana under health if Blizzard reset it
-        mb:ClearAllPoints()
-        mb:SetPoint("TOPLEFT", hb, "BOTTOMLEFT", 0, -1)
-        mb:SetPoint("TOPRIGHT", hb, "BOTTOMRIGHT", 0, -1)
+    -- health bar: wide + tall, anchored under the name (fixed so Blizzard's relayout can't shrink it)
+    if nm then
+        hb:ClearAllPoints()
+        hb:SetPoint("TOPLEFT", nm, "BOTTOMLEFT", 0, -2)
     end
-    if math.abs(mb:GetHeight() - 9) > 0.5 then mb:SetHeight(9) end
+    hb:SetWidth(PARTY_HB_W); hb:SetHeight(PARTY_HB_H)
+    -- mana bar: same width, stacked right under health
+    mb:ClearAllPoints()
+    mb:SetPoint("TOPLEFT", hb, "BOTTOMLEFT", 0, -2)
+    mb:SetWidth(PARTY_HB_W); mb:SetHeight(PARTY_MB_H)
 end
 
 local function Short(n)
@@ -164,6 +183,8 @@ driver:SetScript("OnUpdate", function(_, e)
         PortraitBorder(f.p, f.u)
     end
     for i = 1, 4 do StylePartyBars(i) end   -- keep party bars tall + readable
+    StyleBigPortrait("PlayerPortrait", "PlayerFrameHealthBar", "PlayerFrameManaBar")
+    StyleBigPortrait("TargetPortrait", "TargetFrameHealthBar", "TargetFrameManaBar")
     StripBlizzardBorders()
 end)
 
