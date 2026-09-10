@@ -72,8 +72,8 @@ end
 -- health bar, power bar, unit token, portrait texture
 local FRAMES = {
     { h = "PlayerFrameHealthBar",       m = "PlayerFrameManaBar",       u = "player", p = "PlayerPortrait" },
-    { h = "TargetFrameHealthBar",       m = "TargetFrameManaBar",       u = "target", p = "TargetPortrait" },
-    { h = "FocusFrameHealthBar",        m = "FocusFrameManaBar",        u = "focus",  p = "FocusPortrait" },
+    { h = "TargetFrameHealthBar",       m = "TargetFrameManaBar",       u = "target", p = "TargetFramePortrait" },
+    { h = "FocusFrameHealthBar",        m = "FocusFrameManaBar",        u = "focus",  p = "FocusFramePortrait" },
     { h = "PetFrameHealthBar",          m = "PetFrameManaBar",          u = "pet",    p = "PetPortrait" },
     { h = "PartyMemberFrame1HealthBar", m = "PartyMemberFrame1ManaBar", u = "party1", p = "PartyMemberFrame1Portrait" },
     { h = "PartyMemberFrame2HealthBar", m = "PartyMemberFrame2ManaBar", u = "party2", p = "PartyMemberFrame2Portrait" },
@@ -253,9 +253,9 @@ driver:SetScript("OnUpdate", function(_, e)
         StyleBackdrop(f)
     end
     for i = 1, 4 do StylePartyBars(i); StylePartyBuffs(i) end   -- tall readable bars + party buffs
-    StyleBigPortrait("PlayerPortrait", "PlayerFrameHealthBar", "PlayerFrameManaBar", "PlayerFrame", "left", { wide = 0.5, fillTop = true })
-    StyleBigPortrait("TargetPortrait", "TargetFrameHealthBar", "TargetFrameManaBar", "TargetFrame", "left", {})
-    StyleBigPortrait("FocusPortrait",  "FocusFrameHealthBar",  "FocusFrameManaBar",  "FocusFrame",  "left", {})
+    StyleBigPortrait("PlayerPortrait",      "PlayerFrameHealthBar", "PlayerFrameManaBar", "PlayerFrame", "left",  {})
+    StyleBigPortrait("TargetFramePortrait", "TargetFrameHealthBar", "TargetFrameManaBar", "TargetFrame", "right", {})
+    StyleBigPortrait("FocusFramePortrait",  "FocusFrameHealthBar",  "FocusFrameManaBar",  "FocusFrame",  "right", {})
     StripBlizzardBorders()
 end)
 
