@@ -16,16 +16,16 @@ local SELFCOL = { 0.30, 0.70, 1.00 }   -- your own bar, brighter
 -- ---------------------------------------------------------------------------
 -- Data
 -- ---------------------------------------------------------------------------
-local data = {}          -- [name] = totalDamage
-local names = {}         -- list of names (for sorting)
-local total = 0
-local combatStart = nil  -- GetTime() of first damage since reset
-local lastActivity = nil
 local wasInside = nil
 
-local function Reset()
-    wipe(data); wipe(names); total = 0; combatStart = nil; lastActivity = nil
-end
+-- Two independent tallies so switching modes NEVER wipes data:
+--   SESS = whole-instance (accumulates until you re-enter the instance)
+--   ENC  = per-encounter  (resets on every pull)
+-- Both are always updated; the mode only chooses which one is displayed.
+local SESS = { data = {}, names = {}, total = 0, start = nil, last = nil }
+local ENC  = { data = {}, names = {}, total = 0, start = nil, last = nil }
+local function ResetSet(s) wipe(s.data); wipe(s.names); s.total = 0; s.start = nil; s.last = nil end
+local function Reset() ResetSet(SESS); ResetSet(ENC) end   -- explicit "reset everything"
 
 -- name -> englishClass, so each line can be class-coloured. Rebuilt from the group (bots included — they
 -- report a real class). Cheap enough to refresh on each redraw.
@@ -58,15 +58,20 @@ end
 -- Only count sources in YOUR group (mine / party / raid), so mobs don't clutter the list.
 local AFF_GROUP = 0x7   -- COMBATLOG_OBJECT_AFFILIATION_MINE|PARTY|RAID
 
+local function AddTo(s, name, amount)
+    local now = GetTime()
+    if not s.start then s.start = now end
+    s.last = now
+    if not s.data[name] then s.data[name] = 0; s.names[#s.names + 1] = name end
+    s.data[name] = s.data[name] + amount
+    s.total = s.total + amount
+end
+
 local function AddDamage(srcName, srcFlags, amount)
     if not srcName or not amount or amount <= 0 then return end
     if bit.band(srcFlags or 0, AFF_GROUP) == 0 then return end
-    local now = GetTime()
-    if not combatStart then combatStart = now end
-    lastActivity = now
-    if not data[srcName] then data[srcName] = 0; names[#names + 1] = srcName end
-    data[srcName] = data[srcName] + amount
-    total = total + amount
+    AddTo(SESS, srcName, amount)   -- both tallies always get the hit
+    AddTo(ENC, srcName, amount)
 end
 
 -- 3.3.5 combat-log: timestamp, subevent, srcGUID, srcName, srcFlags, dstGUID, dstName, dstFlags, ...
@@ -101,8 +106,8 @@ local function BuildMenu()
         end },
         { text = "Per-encounter (reset each pull)", checked = DB().perEncounter, keepShownOnClick = false,
           func = function()
-            DB().perEncounter = not DB().perEncounter
-            Reset(); if frame:IsShown() then Redraw() end
+            DB().perEncounter = not DB().perEncounter   -- just switch which tally is shown; no data wiped
+            if frame:IsShown() then Redraw() end
         end },
         { text = "Close", notCheckable = true, func = function() end },
     }
@@ -151,11 +156,13 @@ end
 
 Redraw = function()
     RefreshClassCache()
+    local s = DB().perEncounter and ENC or SESS   -- mode picks which tally to show; neither is wiped by switching
+    local data, names = s.data, s.names
     table.sort(names, function(a, b) return (data[a] or 0) > (data[b] or 0) end)
     local dur = 0
-    if combatStart then
-        local endt = UnitAffectingCombat("player") and GetTime() or (lastActivity or GetTime())
-        dur = endt - combatStart
+    if s.start then
+        local endt = UnitAffectingCombat("player") and GetTime() or (s.last or GetTime())
+        dur = endt - s.start
     end
     if dur < 1 then dur = 1 end
     frame.dur:SetText(("%ds"):format(math.floor(dur)))
@@ -204,11 +211,14 @@ frame:SetScript("OnEvent", function(self, event, ...)
     if event == "COMBAT_LOG_EVENT_UNFILTERED" then
         OnCombatLog(...)
     elseif event == "PLAYER_REGEN_DISABLED" then
-        if DB().perEncounter then Reset() end       -- per-encounter mode: fresh numbers each pull
+        ResetSet(ENC)   -- new pull: per-encounter tally restarts; whole-instance keeps accumulating
     elseif event == "PLAYER_ENTERING_WORLD" then
         RefreshClassCache()
         local inside = IsInInstance()
-        if inside and not wasInside then Reset() end   -- whole-instance mode: reset at the entrance
+        if inside and not wasInside then
+            Reset()                                   -- fresh instance = both tallies reset
+            frame:Show(); Redraw()                    -- auto-show the meter on instance entry
+        end
         wasInside = inside
     end
 end)
@@ -224,8 +234,8 @@ SlashCmdList["DEEPWARDMETER"] = function(msg)
         Reset(); Redraw()
         print("|cff5599ffDeepward Meter:|r reset.")
     elseif msg == "encounter" or msg == "mode" then
-        DB().perEncounter = not DB().perEncounter
-        Reset(); if frame:IsShown() then Redraw() end
+        DB().perEncounter = not DB().perEncounter   -- switch view only; no data wiped
+        if frame:IsShown() then Redraw() end
         print("|cff5599ffDeepward Meter:|r " .. (DB().perEncounter
             and "per-encounter (resets each pull)." or "whole-instance (resets at the entrance)."))
     else
