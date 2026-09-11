@@ -2181,7 +2181,15 @@ local function DwCreateBotBar()
     bar:RegisterForDrag("LeftButton")
     bar:SetScript("OnDragStart", function(self) if not (DeepwardTiersDB and DeepwardTiersDB.botBarLocked) then self:StartMoving() end end)
     bar:SetScript("OnDragStop", function(self) self:StopMovingOrSizing(); DwBotBarSavePos() end)
-    -- no bar backdrop/frame — just the buttons, each with its own action-button border (below)
+    -- backdrop behind the bar — same panel the player unit frame uses (DeepwardUI FrameStyle)
+    local bd = CreateFrame("Frame", nil, bar)
+    bd:SetFrameLevel(math.max(0, bar:GetFrameLevel()))
+    bd:SetPoint("TOPLEFT", -4, 4); bd:SetPoint("BOTTOMRIGHT", 4, -4)
+    bd:SetBackdrop({ bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 10,
+        insets = { left = 2, right = 2, top = 2, bottom = 2 } })
+    bd:SetBackdropColor(0, 0, 0, 0.5)
+    bd:SetBackdropBorderColor(0, 0, 0, 0.9)
 
     local title = bar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     title:SetPoint("TOP", 0, -3)
