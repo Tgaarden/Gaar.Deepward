@@ -32,7 +32,7 @@ local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 title:SetPoint("TOPLEFT", 14, -12); title:SetText("Deepward Bags")
 
 local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
-close:SetPoint("TOPRIGHT", -6, -6)
+close:SetPoint("BOTTOMRIGHT", -18, -2)   -- bottom-right, just left of the resize grip
 
 local sortBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
 sortBtn:SetSize(96, 22); sortBtn:SetPoint("TOPRIGHT", -32, -9)
