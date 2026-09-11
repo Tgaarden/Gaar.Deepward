@@ -239,6 +239,13 @@ local function UpdatePlate(o)
     local isTarget = nameText ~= "" and UnitExists("target") and UnitCanAttack("player", "target")
                      and nameText == UnitName("target") and o.plate:GetAlpha() > 0.9
 
+    -- The mob under the cursor: Blizzard shows this plate's highlight region, and "mouseover" is a real unit
+    -- token — so hovering any mob lets us read ITS own debuffs/threat/cast/ToT. Target + mouseover are the
+    -- only per-mob tokens available on 3.3.5 (nameplate units arrived in Cataclysm).
+    local isMouseover = not isTarget and o.r.highlight and o.r.highlight:IsShown()
+                        and UnitExists("mouseover") and UnitCanAttack("player", "mouseover")
+    local unit = isTarget and "target" or (isMouseover and "mouseover") or nil
+
     -- colour
     local cr, cg, cb = BarColor(o, isTarget)
     if cr then o.health:SetStatusBarColor(cr, cg, cb) end
@@ -249,8 +256,8 @@ local function UpdatePlate(o)
     -- non-native colour that reads at a glance. Rising-but-not-yet-aggro shows an orange warning.
     local aggro
     o.ttext:SetText("")
-    if DB().threat and isTarget then
-        local tanking, status, pctThreat = UnitDetailedThreatSituation("player", "target")
+    if DB().threat and unit then
+        local tanking, status, pctThreat = UnitDetailedThreatSituation("player", unit)
         if tanking then
             o.health:SetStatusBarColor(0.1, 1.0, 0.1); aggro = true      -- you have aggro
         elseif status and status >= 2 then
@@ -261,8 +268,8 @@ local function UpdatePlate(o)
 
     -- name + level
     o.name:SetText(nameText)
-    if isTarget and DB().colorMode == "class" and UnitIsPlayer("target") then
-        local _, cls = UnitClass("target"); local c = cls and RAID_CLASS_COLORS[cls]
+    if unit and DB().colorMode == "class" and UnitIsPlayer(unit) then
+        local _, cls = UnitClass(unit); local c = cls and RAID_CLASS_COLORS[cls]
         if c then o.name:SetTextColor(c.r, c.g, c.b) else o.name:SetTextColor(1, 1, 1) end
     else
         o.name:SetTextColor(1, 1, 1)
@@ -276,9 +283,9 @@ local function UpdatePlate(o)
     else o.htext:SetText(math.floor(pct * 100 + 0.5) .. "%") end
     if cur <= 0 then o.ttext:SetText("") end
 
-    -- target-of-target
-    if DB().totText and isTarget and UnitExists("targettarget") then
-        o.tot:SetText("-> " .. (UnitName("targettarget") or ""))
+    -- target-of-target (of whichever mob this plate maps to)
+    if DB().totText and unit and UnitExists(unit .. "target") then
+        o.tot:SetText("-> " .. (UnitName(unit .. "target") or ""))
     else
         o.tot:SetText("")
     end
@@ -301,9 +308,9 @@ local function UpdatePlate(o)
     else o.hi:Hide() end
     o.frame:SetScale((DB().targetHi and isTarget) and DB().targetScale or 1)
 
-    -- non-target shading
+    -- non-target shading (the hovered mob stays bright too)
     if DB().dimOthers then
-        o.frame:SetAlpha((not UnitExists("target") or isTarget) and 1 or DB().dimAlpha)
+        o.frame:SetAlpha((not UnitExists("target") or isTarget or isMouseover) and 1 or DB().dimAlpha)
     else
         o.frame:SetAlpha(1)
     end
@@ -312,9 +319,9 @@ local function UpdatePlate(o)
     -- Cached: the cooldown swipe and icon positions are only rewritten when they actually change, otherwise
     -- calling SetCooldown/SetPoint every tick restarts the swipe and makes the icons flicker.
     local shown = 0
-    if DB().auras and isTarget then
+    if DB().auras and unit then
         for i = 1, 40 do
-            local aname, _, icon, count, _, duration, expiration, caster = UnitAura("target", i, "HARMFUL")
+            local aname, _, icon, count, _, duration, expiration, caster = UnitAura(unit, i, "HARMFUL")
             if not aname then break end
             if caster == "player" and shown < AURA_N then
                 shown = shown + 1
