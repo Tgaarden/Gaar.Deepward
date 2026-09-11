@@ -74,10 +74,21 @@ local function StylePlate(plate)
     -- dark backdrop behind the health bar
     if not plate._bg then
         local bg = plate:CreateTexture(nil, "BACKGROUND")
-        bg:SetTexture(0, 0, 0, 0.6)
+        bg:SetTexture(0, 0, 0, 0.85)
         bg:SetPoint("TOPLEFT", hb, "TOPLEFT", -1, 1)
         bg:SetPoint("BOTTOMRIGHT", hb, "BOTTOMRIGHT", 1, -1)
         plate._bg = bg
+    end
+
+    -- crisp 1px black border around the health bar (the flat nameplate look)
+    if not plate._border then
+        local bd = CreateFrame("Frame", nil, plate)
+        bd:SetFrameLevel(hb:GetFrameLevel())
+        bd:SetPoint("TOPLEFT", hb, "TOPLEFT", -1, 1)
+        bd:SetPoint("BOTTOMRIGHT", hb, "BOTTOMRIGHT", 1, -1)
+        bd:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
+        bd:SetBackdropBorderColor(0, 0, 0, 1)
+        plate._border = bd
     end
 
     -- target-highlight / aggro border frame
@@ -115,14 +126,39 @@ local function StylePlate(plate)
     end
     plate._tot:SetFont(STANDARD_TEXT_FONT, math.max(7, DB().nameSize - 3), "OUTLINE")
 
+    -- name sits just above the bar, centered; level small at the right end
     r.name:SetFont(STANDARD_TEXT_FONT, DB().nameSize, "OUTLINE")
-    if r.level then r.level:SetFont(STANDARD_TEXT_FONT, DB().nameSize - 2, "OUTLINE") end
+    r.name:ClearAllPoints()
+    r.name:SetPoint("BOTTOM", hb, "TOP", 0, 2)
+    if r.level then
+        r.level:SetFont(STANDARD_TEXT_FONT, DB().nameSize - 2, "OUTLINE")
+        r.level:ClearAllPoints()
+        r.level:SetPoint("BOTTOMRIGHT", hb, "TOPRIGHT", 0, 2)
+    end
     if r.raid and r.raid.SetSize then r.raid:SetSize(20, 20) end   -- bigger raid-target marker
 
+    -- cast bar: flat texture, matching backdrop + 1px black border, icon at the left
     if cb and cb.SetStatusBarTexture then
         cb:SetStatusBarTexture(BAR_TEX)
         cb:SetWidth(DB().width)
         if r.castBorder and r.castBorder.SetTexture then r.castBorder:SetTexture(nil) end
+        if not plate._cbg then
+            local bg = plate:CreateTexture(nil, "BACKGROUND")
+            bg:SetTexture(0, 0, 0, 0.85)
+            bg:SetPoint("TOPLEFT", cb, "TOPLEFT", -1, 1)
+            bg:SetPoint("BOTTOMRIGHT", cb, "BOTTOMRIGHT", 1, -1)
+            plate._cbg = bg
+            local bd = CreateFrame("Frame", nil, plate)
+            bd:SetFrameLevel(cb:GetFrameLevel())
+            bd:SetPoint("TOPLEFT", cb, "TOPLEFT", -1, 1)
+            bd:SetPoint("BOTTOMRIGHT", cb, "BOTTOMRIGHT", 1, -1)
+            bd:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
+            bd:SetBackdropBorderColor(0, 0, 0, 1)
+            plate._cbd = bd
+        end
+        if r.spellIcon and r.spellIcon.SetTexCoord then
+            r.spellIcon:SetTexCoord(0.1, 0.9, 0.1, 0.9)   -- trim the default icon border
+        end
     end
 
     plate._hb, plate._name, plate._regions = hb, r.name, r
