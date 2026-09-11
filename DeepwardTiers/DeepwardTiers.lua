@@ -2156,16 +2156,24 @@ end
 local function DwCreateBotBar()
     if dwBotBar then return dwBotBar end
     local n = #DW_BOT_BAR_ACTIONS
-    -- match the pet action bar's icon size (read it live; fall back to the standard 30px pet button)
-    local SIZE = 30
-    if _G.PetActionButton1 and PetActionButton1.GetWidth then
-        local w = PetActionButton1:GetWidth()
-        if w and w > 0 then SIZE = math.floor(w + 0.5) end
+    -- True visual copy of the pet action bar: read its button SIZE and the exact centre-to-centre STEP
+    -- (spacing) from the live pet buttons; fall back to the defaults if the pet bar isn't laid out.
+    local SIZE, STEP = 30, 36
+    local p1, p2 = _G.PetActionButton1, _G.PetActionButton2
+    if p1 and p1.GetWidth then
+        local w = p1:GetWidth(); if w and w > 0 then SIZE = w end
+        if p2 and p1:GetLeft() and p2:GetLeft() then
+            local d = p2:GetLeft() - p1:GetLeft()
+            if d and d > 0 then STEP = d end
+        else
+            STEP = SIZE + 6   -- default pet-bar gap
+        end
     end
-    local PAD, HDR = 4, 14
+    local GAP = STEP - SIZE
+    local EDGE, HDR = 6, 14
     local bar = CreateFrame("Frame", "DeepwardBotBar", UIParent)
-    bar:SetWidth(PAD + n * (SIZE + PAD))
-    bar:SetHeight(HDR + SIZE + PAD * 2)
+    bar:SetWidth(EDGE * 2 + n * SIZE + (n - 1) * GAP)
+    bar:SetHeight(HDR + SIZE + EDGE * 2)
     bar:SetFrameStrata("MEDIUM")
     bar:SetClampedToScreen(true)
     bar:SetMovable(true)
@@ -2188,7 +2196,7 @@ local function DwCreateBotBar()
     for i, act in ipairs(DW_BOT_BAR_ACTIONS) do
         local b = CreateFrame("Button", nil, bar)
         b:SetSize(SIZE, SIZE)
-        b:SetPoint("TOPLEFT", PAD + (i - 1) * (SIZE + PAD), -HDR)
+        b:SetPoint("TOPLEFT", EDGE + (i - 1) * STEP, -HDR)
         b:SetNormalTexture(act.icon)
         b:GetNormalTexture():SetTexCoord(0.08, 0.92, 0.08, 0.92)   -- trim the default icon border
         b:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square")
