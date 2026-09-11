@@ -92,7 +92,7 @@ local function StyleBackdrop(f)
     local c = f._circle
     c:ClearAllPoints()
     c:SetPoint("CENTER", pt, "CENTER", 0, 0)
-    c:SetSize(pt:GetWidth() * 1.35, pt:GetHeight() * 1.35)
+    c:SetSize(pt:GetWidth() * 1.12, pt:GetHeight() * 1.12)
     c:Show()
 end
 
