@@ -154,9 +154,9 @@ local function BuildOverlay(plate)
     o.htext = h:CreateFontString(nil, "OVERLAY"); o.htext:SetPoint("CENTER", h, "CENTER", 0, 0)
     o.ttext = h:CreateFontString(nil, "OVERLAY"); o.ttext:SetPoint("RIGHT", h, "RIGHT", -2, 0)
 
-    -- cast bar — floats just OVER the name (above the health bar), so a cast overlaps the name row
+    -- cast bar — sits right ON TOP of the name (overlapping it), so casts read over the name row
     local c = CreateFrame("StatusBar", nil, f); c:SetStatusBarTexture(BAR_TEX)
-    c:SetPoint("BOTTOM", h, "TOP", 0, 1)
+    c:SetPoint("CENTER", o.name, "CENTER", 0, 0)
     c:SetFrameLevel(h:GetFrameLevel() + 4)   -- above the name text
     local cbg = c:CreateTexture(nil, "BACKGROUND"); cbg:SetTexture(0, 0, 0, 0.85)
     cbg:SetPoint("TOPLEFT", -1, 1); cbg:SetPoint("BOTTOMRIGHT", 1, -1)
@@ -256,14 +256,14 @@ local function UpdatePlate(o)
     if DB().execute and pct * 100 <= DB().executePct then o.health:SetStatusBarColor(0.5, 0, 0) end
 
     -- threat (target only) + differential text.
-    -- When YOU hold aggro (you are the mob's primary target) the bar goes bright GREEN — a deliberately
-    -- non-native colour that reads at a glance. Rising-but-not-yet-aggro shows an orange warning.
+    -- When YOU hold aggro (you are the mob's primary target) the bar goes PURPLE — a deliberately non-native
+    -- colour that reads at a glance. Rising-but-not-yet-aggro shows an orange warning.
     local aggro
     o.ttext:SetText("")
     if DB().threat and unit then
         local tanking, status, pctThreat = UnitDetailedThreatSituation("player", unit)
         if tanking then
-            o.health:SetStatusBarColor(0.1, 1.0, 0.1); aggro = true      -- you have aggro
+            o.health:SetStatusBarColor(0.6, 0.2, 0.9); aggro = true      -- you have aggro (purple)
         elseif status and status >= 2 then
             o.health:SetStatusBarColor(1.0, 0.6, 0.0)                    -- high threat, about to pull
         end
@@ -306,8 +306,8 @@ local function UpdatePlate(o)
         o.cast:Hide()
     end
 
-    -- highlight + scale (green border when you hold aggro, white on your target otherwise)
-    if aggro then o.hi:SetBackdropBorderColor(0.1, 1.0, 0.1, 1); o.hi:Show()
+    -- highlight + scale (purple border when you hold aggro, white on your target otherwise)
+    if aggro then o.hi:SetBackdropBorderColor(0.6, 0.2, 0.9, 1); o.hi:Show()
     elseif DB().targetHi and isTarget then o.hi:SetBackdropBorderColor(1, 1, 1, 1); o.hi:Show()
     else o.hi:Hide() end
     o.frame:SetScale((DB().targetHi and isTarget) and DB().targetScale or 1)
