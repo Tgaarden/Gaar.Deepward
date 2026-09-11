@@ -276,6 +276,8 @@ local function StartTestCast(f)
 end
 local function SetTesting(on)
     testing = on
+    -- close the Deepward panel so the test bars aren't hidden behind it
+    if on and _G.DeepwardTiersFrame and _G.DeepwardTiersFrame:IsShown() then _G.DeepwardTiersFrame:Hide() end
     if not testing then
         for _, u in ipairs(UNITS) do bars[u].startMs = nil; bars[u].fadeAt = nil; bars[u]._test = nil; bars[u]:Hide() end
     end

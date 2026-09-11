@@ -1281,13 +1281,10 @@ local function CreateUI()
         if _G.DeepwardPlates_Config then _G.DeepwardPlates_Config()
         else DEFAULT_CHAT_FRAME:AddMessage("|cffff6666Deepward:|r DeepwardPlates addon not loaded.") end
     end)
-    DwTopToggle("Bags", 52, 14 + 62 + 4 + 52 + 4 + 58 + 4, -38, function()
-        if _G.DeepwardBags_Toggle then _G.DeepwardBags_Toggle()
-        else DEFAULT_CHAT_FRAME:AddMessage("|cffff6666Deepward:|r DeepwardBags addon not loaded.") end
-    end)
-    -- Profiles: save/load/share all Deepward settings across characters.
-    DwTopToggle("Profiles", 70, 14 + 62 + 4 + 52 + 4 + 58 + 4 + 52 + 4, -38, function()
-        if _G.DeepwardProfiles_Toggle then _G.DeepwardProfiles_Toggle()
+    -- Profiles: save/load/share all Deepward settings across characters (takes the old Bags slot).
+    -- Closes this panel so the Profiles window isn't hidden behind it.
+    DwTopToggle("Profiles", 58, 14 + 62 + 4 + 52 + 4 + 58 + 4, -38, function()
+        if _G.DeepwardProfiles_Toggle then frame:Hide(); _G.DeepwardProfiles_Toggle()
         else DEFAULT_CHAT_FRAME:AddMessage("|cffff6666Deepward:|r DeepwardProfiles addon not loaded.") end
     end)
 
