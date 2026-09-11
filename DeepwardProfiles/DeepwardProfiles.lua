@@ -49,16 +49,32 @@ local function Snapshot()
     return snap
 end
 
+local function wipe(t) for k in pairs(t) do t[k] = nil end end
+
+-- Apply IN PLACE: keep each saved-variable table's identity (wipe + refill) so any addon that cached a
+-- reference to it still sees the new values, and WoW persists it on the reload that follows.
 local function ApplySnapshot(snap)
+    local applied = {}
     for _, n in ipairs(DB_NAMES) do
-        if type(snap[n]) == "table" then _G[n] = deepcopy(snap[n]) end
+        if type(snap[n]) == "table" then
+            if type(_G[n]) ~= "table" then _G[n] = {} end
+            wipe(_G[n])
+            for k, v in pairs(deepcopy(snap[n])) do _G[n][k] = v end
+            applied[#applied + 1] = n
+        end
     end
+    return applied
 end
 
 local function SaveProfile(name)
     if not name or name == "" then return false end
-    PDB().profiles[name] = Snapshot()
-    return true
+    local snap = Snapshot()
+    PDB().profiles[name] = snap
+    local got = {}
+    for _, n in ipairs(DB_NAMES) do
+        if snap[n] then got[#got + 1] = (n:gsub("^Deepward", ""):gsub("DB$", "")) end
+    end
+    return true, got
 end
 
 local function LoadProfile(name)
@@ -153,7 +169,10 @@ local function BuildUI()
     saveBtn:SetSize(90, 22); saveBtn:SetPoint("LEFT", nameBox, "RIGHT", 8, 0); saveBtn:SetText("Save current")
     saveBtn:SetScript("OnClick", function()
         local n = nameBox:GetText()
-        if n and n ~= "" then SaveProfile(n); say("saved profile '" .. n .. "'."); RefreshList() else say("type a name first.") end
+        if n and n ~= "" then
+            local _, got = SaveProfile(n)
+            say("saved '" .. n .. "' — captured: " .. table.concat(got or {}, ", ")); RefreshList()
+        else say("type a name first.") end
     end)
 
     -- profile list
@@ -255,7 +274,7 @@ SlashCmdList["DEEPWARDPROFILE"] = function(msg)
     local cmd, arg = msg:match("^(%S*)%s*(.-)%s*$")
     cmd = (cmd or ""):lower()
     if cmd == "save" and arg ~= "" then
-        SaveProfile(arg); say("saved profile '" .. arg .. "'."); RefreshList()
+        local _, got = SaveProfile(arg); say("saved '" .. arg .. "' — captured: " .. table.concat(got or {}, ", ")); RefreshList()
     elseif cmd == "load" and arg ~= "" then
         if LoadProfile(arg) then say("loading '" .. arg .. "' …"); ReloadUI() else say("no profile named '" .. arg .. "'.") end
     elseif cmd == "list" then
