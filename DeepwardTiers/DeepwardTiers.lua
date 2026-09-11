@@ -2170,10 +2170,10 @@ local function DwCreateBotBar()
         end
     end
     local GAP = STEP - SIZE
-    local EDGE, HDR = 6, 14
+    local EDGE, HDR = 3, 12
     local bar = CreateFrame("Frame", "DeepwardBotBar", UIParent)
     bar:SetWidth(EDGE * 2 + n * SIZE + (n - 1) * GAP)
-    bar:SetHeight(HDR + SIZE + EDGE * 2)
+    bar:SetHeight(HDR + SIZE + EDGE)
     bar:SetFrameStrata("MEDIUM")
     bar:SetClampedToScreen(true)
     bar:SetMovable(true)
@@ -2184,7 +2184,7 @@ local function DwCreateBotBar()
     -- backdrop behind the bar — same panel the player unit frame uses (DeepwardUI FrameStyle)
     local bd = CreateFrame("Frame", nil, bar)
     bd:SetFrameLevel(math.max(0, bar:GetFrameLevel()))
-    bd:SetPoint("TOPLEFT", -4, 4); bd:SetPoint("BOTTOMRIGHT", 4, -4)
+    bd:SetPoint("TOPLEFT", -1, 1); bd:SetPoint("BOTTOMRIGHT", 1, -1)
     bd:SetBackdrop({ bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
         edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 10,
         insets = { left = 2, right = 2, top = 2, bottom = 2 } })
