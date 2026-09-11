@@ -18,16 +18,19 @@ local function DB()
     if d.show == nil then d.show = { player = true, target = true, focus = true, pet = false } end
     if d.locked == nil then d.locked = false end
     if d.showLatency == nil then d.showLatency = true end
+    if d.spark == nil then d.spark = true end
+    if d.showTotal == nil then d.showTotal = true end   -- "remain / total" instead of just remain
     if d.pos == nil then d.pos = {} end   -- [unit] = {point, x, y}
+    if d.size == nil then d.size = {} end  -- [unit] = {w, h} (resize grip; overrides the default)
     return d
 end
 
--- default anchor per unit
+-- default anchor + size per unit (taller than before)
 local DEFAULTS = {
-    player = { "CENTER", 0, -170, 240, 20 },
-    target = { "CENTER", 0, -200, 200, 16 },
-    focus  = { "CENTER", 260, -140, 180, 14 },
-    pet    = { "CENTER", -260, -140, 160, 12 },
+    player = { "CENTER", 0, -170, 260, 26 },
+    target = { "CENTER", 0, -200, 220, 22 },
+    focus  = { "CENTER", 260, -140, 190, 20 },
+    pet    = { "CENTER", -260, -140, 170, 18 },
 }
 
 local UNITS = { "player", "target", "focus", "pet" }
@@ -45,11 +48,20 @@ end
 -- ---------------------------------------------------------------------------
 -- Cast bar factory
 -- ---------------------------------------------------------------------------
+-- re-sync child elements to the frame's current size (called on create + on resize)
+local function ApplyCastSize(f)
+    local h = f:GetHeight()
+    local isz = math.max(6, h - 4)
+    f.icon:SetSize(isz, isz)
+    if f.spark then f.spark:SetHeight(h * 2) end
+end
+
 local function MakeBar(unit)
     local def = DEFAULTS[unit]
     local f = CreateFrame("Frame", "DeepwardCast_" .. unit, UIParent)
     f.unit = unit
-    f:SetSize(def[4], def[5])
+    local sz = DB().size[unit]
+    f:SetSize((sz and sz.w) or def[4], (sz and sz.h) or def[5])
     local pos = DB().pos[unit]
     if pos then f:SetPoint(pos.point or "CENTER", UIParent, pos.point or "CENTER", pos.x or 0, pos.y or 0)
     else f:SetPoint(def[1], UIParent, def[1], def[2], def[3]) end
@@ -65,10 +77,8 @@ local function MakeBar(unit)
                     insets = { left = 2, right = 2, top = 2, bottom = 2 } })
     f:SetBackdropColor(0, 0, 0, 0.6); f:SetBackdropBorderColor(0.3, 0.3, 0.35, 1)
 
-    -- spell icon (left) — square, height synced to the bar (frame height minus the 2px insets top+bottom)
-    local iconSize = def[5] - 4
+    -- spell icon (left) — square, height synced to the bar
     f.icon = f:CreateTexture(nil, "ARTWORK")
-    f.icon:SetSize(iconSize, iconSize)
     f.icon:SetPoint("RIGHT", f, "LEFT", -2, 0)
     f.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 
@@ -84,12 +94,36 @@ local function MakeBar(unit)
     f.lag:SetPoint("TOPRIGHT"); f.lag:SetPoint("BOTTOMRIGHT")
     f.lag:SetWidth(0); f.lag:Hide()
 
+    -- moving spark at the fill edge (Quartz-style)
+    f.spark = f.bar:CreateTexture(nil, "OVERLAY")
+    f.spark:SetTexture("Interface\\CastingBar\\UI-CastingBar-Spark")
+    f.spark:SetBlendMode("ADD")
+    f.spark:SetWidth(18)
+    f.spark:Hide()
+
     -- texts
     f.name = f.bar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     f.name:SetPoint("LEFT", 4, 0); f.name:SetJustifyH("LEFT")
     f.time = f.bar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     f.time:SetPoint("RIGHT", -4, 0); f.time:SetJustifyH("RIGHT")
 
+    -- resize grip (drag to set width + height; shift-drag the bar still moves it)
+    f:SetResizable(true)
+    f:SetMinResize(80, 12); f:SetMaxResize(500, 60)
+    local grip = CreateFrame("Button", nil, f)
+    grip:SetSize(12, 12); grip:SetPoint("BOTTOMRIGHT", 0, 0)
+    grip:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
+    grip:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
+    grip:SetScript("OnMouseDown", function() if not DB().locked then f:StartSizing("BOTTOMRIGHT") end end)
+    grip:SetScript("OnMouseUp", function()
+        f:StopMovingOrSizing(); ApplyCastSize(f)
+        DB().size[unit] = { w = f:GetWidth(), h = f:GetHeight() }
+    end)
+    if DB().locked then grip:Hide() end
+    f.grip = grip
+    f:SetScript("OnSizeChanged", function(self) ApplyCastSize(self) end)
+
+    ApplyCastSize(f)
     f:Hide()
     return f
 end
@@ -97,7 +131,7 @@ end
 local function StartCast(f)
     local name, icon, startMs, endMs, notInt, channel = CastInfo(f.unit)
     if not name then f:Hide(); return end
-    f.startMs, f.endMs, f.channel = startMs, endMs, channel
+    f.startMs, f.endMs, f.channel, f._test = startMs, endMs, channel, nil
     f.icon:SetTexture(icon or "Interface\\Icons\\INV_Misc_QuestionMark")
     f.name:SetText(name)
     -- colour: channel green, uninterruptible grey, normal gold
@@ -141,10 +175,21 @@ local function OnUpdate(f)
     if f.channel then frac = 1 - frac end   -- channels drain
     f.bar:SetValue(frac)
     if f.lagFrac then f.lag:SetWidth(f.bar:GetWidth() * f.lagFrac); f.lag:Show() end
+    -- moving spark at the fill edge
+    if DB().spark then
+        f.spark:ClearAllPoints()
+        f.spark:SetPoint("CENTER", f.bar, "LEFT", f.bar:GetWidth() * frac, 0)
+        f.spark:Show()
+    else f.spark:Hide() end
     local remain = (f.endMs - now) / 1000
     if remain < 0 then remain = 0 end
-    f.time:SetText(("%.1f"):format(remain))
-    if now >= f.endMs then f:Hide(); f.startMs = nil end
+    local total = (f.endMs - f.startMs) / 1000
+    if DB().showTotal then f.time:SetText(("%.1f / %.1f"):format(remain, total))
+    else f.time:SetText(("%.1f"):format(remain)) end
+    if now >= f.endMs then
+        if f._test then f.startMs = nil            -- test: loop, but stay shown (never hide -> drag never breaks)
+        else f:Hide(); f.startMs = nil end
+    end
 end
 
 -- ---------------------------------------------------------------------------
@@ -169,14 +214,14 @@ end
 local testing = false
 local TEST_LABEL = { player = "Player", target = "Target", focus = "Focus", pet = "Pet" }
 local function StartTestCast(f)
-    f.startMs = GetTime() * 1000; f.endMs = f.startMs + 3000; f.channel = false; f.lagFrac = nil
+    f.startMs = GetTime() * 1000; f.endMs = f.startMs + 10000; f.channel = false; f.lagFrac = nil; f._test = true
     f.icon:SetTexture("Interface\\Icons\\Spell_Fire_FlameBolt")
     f.name:SetText("Test: " .. (TEST_LABEL[f.unit] or f.unit)); f.bar:SetStatusBarColor(1, 0.75, 0.1); f:Show()
 end
 local function SetTesting(on)
     testing = on
     if not testing then
-        for _, u in ipairs(UNITS) do bars[u].startMs = nil; bars[u].fadeAt = nil; bars[u]:Hide() end
+        for _, u in ipairs(UNITS) do bars[u].startMs = nil; bars[u].fadeAt = nil; bars[u]._test = nil; bars[u]:Hide() end
     end
 end
 
@@ -241,9 +286,14 @@ local function Menu()
     end
     t[#t + 1] = { text = "Latency safe-zone", checked = DB().showLatency, keepShownOnClick = true,
         func = function() DB().showLatency = not DB().showLatency end }
-    t[#t + 1] = { text = (DB().locked and "Unlock (shift-drag to move)" or "Lock position"), notCheckable = true,
+    t[#t + 1] = { text = "Spark at cast edge", checked = DB().spark, keepShownOnClick = true,
+        func = function() DB().spark = not DB().spark end }
+    t[#t + 1] = { text = "Show total cast time", checked = DB().showTotal, keepShownOnClick = true,
+        func = function() DB().showTotal = not DB().showTotal end }
+    t[#t + 1] = { text = (DB().locked and "Unlock (shift-drag move, grip resize)" or "Lock position/size"), notCheckable = true,
         func = function() DB().locked = not DB().locked
-            print("|cff5599ff" .. ADDON .. ":|r " .. (DB().locked and "locked." or "unlocked — shift-drag the bars to move.")) end }
+            for _, u in ipairs(UNITS) do if bars[u].grip then if DB().locked then bars[u].grip:Hide() else bars[u].grip:Show() end end end
+            print("|cff5599ff" .. ADDON .. ":|r " .. (DB().locked and "locked." or "unlocked — shift-drag to move, drag the corner grip to resize.")) end }
     t[#t + 1] = { text = "Test bars (loop all)", checked = testing, keepShownOnClick = true,
         func = function() SetTesting(not testing) end }
     t[#t + 1] = { text = "Close", notCheckable = true, func = function() end }
