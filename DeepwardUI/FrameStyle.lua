@@ -262,6 +262,8 @@ local function UpdateBarText(barName, unit, powerBar)
     local fs = BarText(bar)
     if not fs then return end
     if not DB().frameBarText or not UnitExists(unit) then fs:SetText(""); return end
+    -- dead/ghost: leave the text blank so Blizzard's "Dead" label stays readable
+    if UnitIsDeadOrGhost(unit) then fs:SetText(""); return end
     local cur, max
     if powerBar then cur, max = UnitPower(unit), UnitPowerMax(unit)
     else cur, max = UnitHealth(unit), UnitHealthMax(unit) end

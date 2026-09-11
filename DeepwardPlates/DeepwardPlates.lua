@@ -95,12 +95,28 @@ local function SetFonts(o)
     o.tot:SetFont(STANDARD_TEXT_FONT, math.max(7, ns - 3), "OUTLINE")
 end
 
+local HideDefault   -- forward declaration (defined below; hooked on each plate's OnShow)
+
 -- Build our overlay on top of a default plate (once per plate; plates are pooled so this is bounded).
 local function BuildOverlay(plate)
     local hb, cb, r = Parse(plate)
     if not (hb and r.name) then return end
 
     local o = { plate = plate, hb = hb, cb = cb, r = r }
+
+    -- collect EVERY default texture to hide (region-name guessing is fragile, so gather generically):
+    -- all texture regions on the plate, plus the health/cast bars' own fill textures. Keep the raid-target
+    -- marker (r.raid) visible. Font strings are left alone (we still read their text) but faded separately.
+    o.hideTex = {}
+    local function collect(frame)
+        if not frame then return end
+        for _, reg in ipairs({ frame:GetRegions() }) do
+            if reg and reg.GetObjectType and reg:GetObjectType() == "Texture" and reg ~= r.raid then
+                o.hideTex[#o.hideTex + 1] = reg
+            end
+        end
+    end
+    collect(plate); collect(hb); collect(cb)
 
     local f = CreateFrame("Frame", nil, plate)
     f:SetFrameLevel((plate:GetFrameLevel() or 0) + 2)
@@ -141,19 +157,18 @@ local function BuildOverlay(plate)
     o.tot = h:CreateFontString(nil, "OVERLAY"); o.tot:SetPoint("TOP", c, "BOTTOM", 0, -1)
 
     ApplySize(o); SetFonts(o)
+    plate:HookScript("OnShow", function() HideDefault(o) end)   -- re-hide the instant Blizzard re-shows the plate
     return o
 end
 
--- Hide the default plate's own art (re-asserted each update since pooled plates get re-shown on reuse).
-local function HideDefault(o)
-    o.hb:SetAlpha(0)
-    if o.cb then o.cb:SetAlpha(0) end
-    local r = o.r
-    if r.name then r.name:SetAlpha(0) end
-    if r.level then r.level:SetAlpha(0) end
-    for _, reg in ipairs({ r.hpBorder, r.castBorder, r.glow, r.highlight, r.boss, r.elite }) do
-        if reg and reg.SetAlpha then reg:SetAlpha(0) end
-    end
+-- Hide the default plate's own art. Re-asserted each update AND on the plate's OnShow, because pooled plates
+-- get re-shown (Blizzard bumps a target plate's art back to full alpha) — that was the "flicker" of the
+-- native red bar coming back.
+local HideDefault
+HideDefault = function(o)
+    for _, tex in ipairs(o.hideTex) do tex:SetAlpha(0) end
+    if o.r.name then o.r.name:SetAlpha(0) end
+    if o.r.level then o.r.level:SetAlpha(0) end
 end
 
 local function BarColor(o, isTarget)
@@ -190,16 +205,17 @@ local function UpdatePlate(o)
     if cr then o.health:SetStatusBarColor(cr, cg, cb) end
     if DB().execute and pct * 100 <= DB().executePct then o.health:SetStatusBarColor(0.5, 0, 0) end
 
-    -- threat (target only) + differential text
+    -- threat (target only) + differential text.
+    -- When YOU hold aggro (you are the mob's primary target) the bar goes bright GREEN — a deliberately
+    -- non-native colour that reads at a glance. Rising-but-not-yet-aggro shows an orange warning.
     local aggro
     o.ttext:SetText("")
     if DB().threat and isTarget then
         local tanking, status, pctThreat = UnitDetailedThreatSituation("player", "target")
-        if DB().role == "tank" then
-            if tanking then o.health:SetStatusBarColor(0.2, 0.9, 0.2) else o.health:SetStatusBarColor(0.9, 0.2, 0.2); aggro = true end
-        else
-            if tanking then o.health:SetStatusBarColor(0.9, 0.2, 0.2); aggro = true
-            elseif status and status >= 1 then o.health:SetStatusBarColor(1.0, 0.8, 0.0) end
+        if tanking then
+            o.health:SetStatusBarColor(0.1, 1.0, 0.1); aggro = true      -- you have aggro
+        elseif status and status >= 2 then
+            o.health:SetStatusBarColor(1.0, 0.6, 0.0)                    -- high threat, about to pull
         end
         if DB().threatText and pctThreat then o.ttext:SetText(("%d%%"):format(pctThreat + 0.5)) end
     end
@@ -214,11 +230,12 @@ local function UpdatePlate(o)
     end
     o.level:SetText(o.r.level and o.r.level:GetText() or "")
 
-    -- health text
+    -- health text (blank at 0 HP / dead, and clear threat text too, so nothing overlaps)
     local mode = DB().healthText
-    if mode == "off" then o.htext:SetText("")
+    if mode == "off" or cur <= 0 then o.htext:SetText("")
     elseif mode == "current" then o.htext:SetText(AbbreviateLargeNumbers and AbbreviateLargeNumbers(cur) or tostring(cur))
     else o.htext:SetText(math.floor(pct * 100 + 0.5) .. "%") end
+    if cur <= 0 then o.ttext:SetText("") end
 
     -- target-of-target
     if DB().totText and isTarget and UnitExists("targettarget") then
@@ -239,8 +256,8 @@ local function UpdatePlate(o)
         o.cast:Hide()
     end
 
-    -- highlight + scale
-    if aggro then o.hi:SetBackdropBorderColor(1, 0, 0, 1); o.hi:Show()
+    -- highlight + scale (green border when you hold aggro, white on your target otherwise)
+    if aggro then o.hi:SetBackdropBorderColor(0.1, 1.0, 0.1, 1); o.hi:Show()
     elseif DB().targetHi and isTarget then o.hi:SetBackdropBorderColor(1, 1, 1, 1); o.hi:Show()
     else o.hi:Hide() end
     o.frame:SetScale((DB().targetHi and isTarget) and DB().targetScale or 1)

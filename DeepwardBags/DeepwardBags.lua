@@ -191,11 +191,21 @@ end)
 -- item to the front (quality desc, then name). One move per frame so item
 -- locks resolve between steps; runs only out of combat.
 -- ---------------------------------------------------------------------------
+-- a slot is "pinned" if its item carries the keep/no-sell padlock — Clean never moves or stacks it
+local function isPinned(bag, slot)
+    if not _G.DeepwardUI_IsKept then return false end
+    local link = GetContainerItemLink(bag, slot)
+    local id = link and tonumber(link:match("item:(%d+)"))
+    return id and _G.DeepwardUI_IsKept(id) and true or false
+end
+
 local function orderSlots()
     local t = {}
     for bag = 0, 4 do
         local n = GetContainerNumSlots(bag) or 0
-        for slot = 1, n do t[#t + 1] = { bag = bag, slot = slot } end
+        for slot = 1, n do
+            if not isPinned(bag, slot) then t[#t + 1] = { bag = bag, slot = slot } end
+        end
     end
     return t
 end
@@ -268,24 +278,28 @@ end
 
 local cleanDriver = CreateFrame("Frame"); cleanDriver:Hide()
 local cleanPhase
+local cleanTicks = 0
 cleanDriver:SetScript("OnUpdate", function(self)
     if InCombatLockdown() then self:Hide(); cleanPhase = nil; return end
+    cleanTicks = cleanTicks + 1
+    if cleanTicks > 400 then self:Hide(); cleanPhase = nil; RefreshList(); return end   -- safety stop
     local order = orderSlots()
     if cleanPhase == "stack" then
         if not stackStep(order) then cleanPhase = "sort" end
         return
     end
     if not sortStep(order) then
-        self:Hide(); cleanPhase = nil; RefreshList()
+        self:Hide(); cleanPhase = nil; RefreshList()   -- done — driver stops, so items stay movable
     end
 end)
 
 local function DoClean()
+    if cleanDriver:IsShown() then return end   -- already running; one click = one pass
     if InCombatLockdown() then
         DEFAULT_CHAT_FRAME:AddMessage("Deepward Bags: kan ikke rydde i kamp.")
         return
     end
-    cleanPhase = "stack"; cleanDriver:Show()
+    cleanTicks = 0; cleanPhase = "stack"; cleanDriver:Show()
 end
 
 cleanBtn:SetScript("OnClick", DoClean)

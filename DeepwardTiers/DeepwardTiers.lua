@@ -2156,7 +2156,13 @@ end
 local function DwCreateBotBar()
     if dwBotBar then return dwBotBar end
     local n = #DW_BOT_BAR_ACTIONS
-    local SIZE, PAD, HDR = 32, 4, 14
+    -- match the pet action bar's icon size (read it live; fall back to the standard 30px pet button)
+    local SIZE = 30
+    if _G.PetActionButton1 and PetActionButton1.GetWidth then
+        local w = PetActionButton1:GetWidth()
+        if w and w > 0 then SIZE = math.floor(w + 0.5) end
+    end
+    local PAD, HDR = 4, 14
     local bar = CreateFrame("Frame", "DeepwardBotBar", UIParent)
     bar:SetWidth(PAD + n * (SIZE + PAD))
     bar:SetHeight(HDR + SIZE + PAD * 2)
