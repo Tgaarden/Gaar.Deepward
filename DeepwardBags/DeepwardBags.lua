@@ -32,10 +32,10 @@ local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 title:SetPoint("TOPLEFT", 14, -12); title:SetText("Deepward Bags")
 
 local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
-close:SetPoint("BOTTOMRIGHT", -18, -2)   -- bottom-right, just left of the resize grip
+close:SetPoint("BOTTOMRIGHT", -8, 12)   -- footer line, right edge, directly under the Sort button
 
 local sortBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-sortBtn:SetSize(96, 22); sortBtn:SetPoint("TOPRIGHT", -32, -9)
+sortBtn:SetSize(96, 22); sortBtn:SetPoint("TOPRIGHT", -8, -8)   -- top-right corner (where X used to be)
 
 local cleanBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
 cleanBtn:SetSize(66, 22); cleanBtn:SetPoint("RIGHT", sortBtn, "LEFT", -4, 0)
@@ -315,7 +315,7 @@ f:SetMaxResize(20 * SIZE + 28, 900)
 f:SetWidth(8 * SIZE + 28); f:SetHeight(320)   -- default to the narrowest allowed width (8 columns)
 f:SetScale(DB().scale or 1)
 local grip = CreateFrame("Button", nil, f)
-grip:SetSize(16, 16); grip:SetPoint("BOTTOMRIGHT", -4, 4)
+grip:SetSize(16, 16); grip:SetPoint("RIGHT", -3, 0)   -- right-edge grabber (width only); clear of the X
 grip:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
 grip:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
 grip:SetScript("OnMouseDown", function() f:StartSizing("RIGHT") end)   -- width only; height follows content
