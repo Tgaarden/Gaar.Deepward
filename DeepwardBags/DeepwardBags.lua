@@ -88,7 +88,7 @@ local function Layout()
         for slot = 1, n do slots[#slots + 1] = { bag = bag, slot = slot } end
     end
     -- columns derived from the current window width (so resizing reflows the grid)
-    COLS = math.max(6, math.floor((f:GetWidth() - 28) / SIZE))
+    COLS = math.max(8, math.floor((f:GetWidth() - 28) / SIZE))   -- never narrower than 8 columns
     local top = -40
     for i, s in ipairs(slots) do
         local b = GetButton(s.bag, s.slot)
@@ -98,8 +98,8 @@ local function Layout()
         b:SetPoint("TOPLEFT", f, "TOPLEFT", 14 + col * SIZE, top - row * SIZE)
         b:Show()
     end
-    local rows = math.max(9, math.ceil(#slots / COLS))   -- always at least 9 rows tall
-    f:SetHeight(40 + rows * SIZE + 46)   -- width is user-controlled (resize); only height auto-fits (extra footer air)
+    local rows = math.max(1, math.ceil(#slots / COLS))   -- height follows the last bag slot exactly
+    f:SetHeight(40 + rows * SIZE + 46)   -- width is user-controlled (resize); height always fits content
     sortBtn:SetText("Sort: " .. DB().sort)
     cleanBtn:SetText("Clean")
 end
@@ -310,15 +310,15 @@ ev:SetScript("OnEvent", function() RefreshList() end)
 
 -- resize + scale
 f:SetResizable(true)
-f:SetMinResize(6 * SIZE + 28, 40 + 9 * SIZE + 46)   -- min height = 9 rows
+f:SetMinResize(8 * SIZE + 28, 100)   -- min width = 8 columns; height is driven by content, not the user
 f:SetMaxResize(20 * SIZE + 28, 900)
-f:SetWidth(6 * SIZE + 28); f:SetHeight(320)   -- default to the narrowest allowed width
+f:SetWidth(8 * SIZE + 28); f:SetHeight(320)   -- default to the narrowest allowed width (8 columns)
 f:SetScale(DB().scale or 1)
 local grip = CreateFrame("Button", nil, f)
 grip:SetSize(16, 16); grip:SetPoint("BOTTOMRIGHT", -4, 4)
 grip:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
 grip:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
-grip:SetScript("OnMouseDown", function() f:StartSizing("BOTTOMRIGHT") end)
+grip:SetScript("OnMouseDown", function() f:StartSizing("RIGHT") end)   -- width only; height follows content
 grip:SetScript("OnMouseUp", function() f:StopMovingOrSizing(); RefreshList() end)
 f:SetScript("OnSizeChanged", function() RefreshList() end)
 f:EnableMouseWheel(true)
@@ -344,11 +344,13 @@ SlashCmdList["DEEPWARDBAGS"] = Toggle
 local function DB2() local d = DB(); if d.override == nil then d.override = true end; return d end
 if DB2().override then
     local function openAll() if DB2().override then Show() else return end end
+    -- Every "open/toggle" entry points at Toggle so the B key (whichever of these its binding calls) both
+    -- opens AND closes our window. Only the explicit Close* stay as Hide.
     ToggleBackpack = function() if DB2().override then Toggle() else end end
     ToggleBag      = function() if DB2().override then Toggle() else end end
     ToggleAllBags  = function() if DB2().override then Toggle() else end end
-    OpenAllBags    = function() if DB2().override then Show() else end end
-    OpenBackpack   = function() if DB2().override then Show() else end end
+    OpenAllBags    = function() if DB2().override then Toggle() else end end
+    OpenBackpack   = function() if DB2().override then Toggle() else end end
     CloseAllBags   = function() if DB2().override then Hide() else end end
     CloseBackpack  = function() if DB2().override then Hide() else end end
     -- keep Blizzard container frames shut if anything still opens them
