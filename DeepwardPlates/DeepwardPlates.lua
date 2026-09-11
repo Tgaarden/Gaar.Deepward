@@ -164,7 +164,7 @@ end
 -- Hide the default plate's own art. Re-asserted each update AND on the plate's OnShow, because pooled plates
 -- get re-shown (Blizzard bumps a target plate's art back to full alpha) — that was the "flicker" of the
 -- native red bar coming back.
-local HideDefault
+-- (HideDefault is forward-declared above so BuildOverlay's OnShow hook can call it)
 HideDefault = function(o)
     for _, tex in ipairs(o.hideTex) do tex:SetAlpha(0) end
     if o.r.name then o.r.name:SetAlpha(0) end
