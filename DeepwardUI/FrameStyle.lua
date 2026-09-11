@@ -41,6 +41,11 @@ local FRAME_OF = {
     player = "PlayerFrame", target = "TargetFrame", focus = "FocusFrame", pet = "PetFrame",
     party1 = "PartyMemberFrame1", party2 = "PartyMemberFrame2", party3 = "PartyMemberFrame3", party4 = "PartyMemberFrame4",
 }
+-- unit token -> its name fontstring (so the square panel hugs the name too)
+local NAME_OF = {
+    player = "PlayerName", target = "TargetFrameTextureFrameName", focus = "FocusFrameTextureFrameName", pet = "PetName",
+    party1 = "PartyMemberFrame1Name", party2 = "PartyMemberFrame2Name", party3 = "PartyMemberFrame3Name", party4 = "PartyMemberFrame4Name",
+}
 
 -- Black, semi-transparent backing panel tight around a unit frame's portrait + bars (+ name). Uses absolute
 -- screen bounds (min/max of portrait & bars) so it works for the mirrored target/focus frames too.
@@ -57,23 +62,31 @@ local function StyleBackdrop(f)
         bd:SetBackdropColor(0, 0, 0, 0.5)
         bd:SetBackdropBorderColor(0, 0, 0, 0.9)
         f._bd = bd
-        -- round backing disc behind the round portrait (minimap background = a dark circle)
+        -- round backing disc behind the round portrait. Use the circular portrait alpha mask (a centred,
+        -- symmetric circle) tinted black — the minimap background isn't centred in its own texture so it
+        -- looked offset.
         local c = uf:CreateTexture(nil, "BACKGROUND")
-        c:SetTexture("Interface\\Minimap\\UI-Minimap-Background")
+        c:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask")
         c:SetVertexColor(0, 0, 0, 0.55)
         f._circle = c
     end
     local bd = f._bd
     if not DB().frameBackdrop then bd:Hide(); if f._circle then f._circle:Hide() end; return end
-    -- Square panel: behind the BAR BLOCK only (name -> mana), not the portrait.
+    -- Square panel hugs the BAR BLOCK + the name (not the portrait). Include the name fontstring's own
+    -- bounds so the top sits just over the name instead of guessing with a big pad.
     local l = math.min(hb:GetLeft(), mb:GetLeft())
     local r = math.max(hb:GetRight(), mb:GetRight())
     local t = hb:GetTop()
     local b = mb:GetBottom()
-    local topPad = (f.u:find("party")) and 14 or 16   -- reach up over the name row
+    local nameFS = _G[NAME_OF[f.u] or ""]
+    if nameFS and nameFS:IsShown() and nameFS:GetTop() then
+        t = math.max(t, nameFS:GetTop())
+        l = math.min(l, nameFS:GetLeft())
+        r = math.max(r, nameFS:GetRight())
+    end
     bd:ClearAllPoints()
-    bd:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", l - 5, t + topPad)
-    bd:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMLEFT", r + 5, b - 5)
+    bd:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", l - 4, t + 3)
+    bd:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMLEFT", r + 4, b - 4)
     bd:Show()
     -- Round panel: a dark circle behind the portrait.
     local c = f._circle
