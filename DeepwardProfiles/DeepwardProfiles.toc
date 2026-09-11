@@ -1,0 +1,7 @@
+## Interface: 30300
+## Title: Deepward Profiles
+## Notes: Save, load and share one settings profile across every Deepward addon
+## Author: Deepward
+## Version: 1.0
+## SavedVariables: DeepwardProfilesDB
+DeepwardProfiles.lua
