@@ -52,7 +52,7 @@ cleanBtn:SetFrameLevel(dragBar:GetFrameLevel() + 5)
 
 local footer = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 footer:SetFont(STANDARD_TEXT_FONT, 16, "OUTLINE")   -- bigger; coin icons scale with the font height
-footer:SetPoint("BOTTOMLEFT", 14, 12)
+footer:SetPoint("BOTTOMLEFT", 18, 18)
 
 -- per-bag parent frames carry the bag id so the secure item template resolves bag+slot on click
 local bagParents = {}
@@ -124,7 +124,7 @@ local function Layout()
         b:Show()
     end
     local rows = math.max(1, math.ceil(#slots / COLS))
-    f:SetHeight(40 + rows * SIZE + 30)   -- width is user-controlled (resize); only height auto-fits
+    f:SetHeight(40 + rows * SIZE + 46)   -- width is user-controlled (resize); only height auto-fits (extra footer air)
     sortBtn:SetText("Sort: " .. mode)
     cleanBtn:SetText(DB().compact and "Clean: on" or "Clean")
 end
@@ -167,7 +167,7 @@ RefreshList = function()
     local dtIcon = GetItemIcon(DT_ITEM); local vtIcon = GetItemIcon(VT_ITEM)
     local dt = dtIcon and ("|T" .. dtIcon .. ":20:20|t ") or "DT "
     local vt = vtIcon and ("|T" .. vtIcon .. ":20:20|t ") or "VT "
-    footer:SetText(("%s     %s%d    %s%d"):format(coins, dt, GetItemCount(DT_ITEM) or 0, vt, GetItemCount(VT_ITEM) or 0))
+    footer:SetText(("%s          %s%d       %s%d"):format(coins, dt, GetItemCount(DT_ITEM) or 0, vt, GetItemCount(VT_ITEM) or 0))
 end
 
 sortBtn:SetScript("OnClick", function()
