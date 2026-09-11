@@ -177,7 +177,11 @@ local function BuildOverlay(plate)
         ic:SetSize(AURA_SZ, AURA_SZ)
         local t = ic:CreateTexture(nil, "ARTWORK"); t:SetAllPoints(); t:SetTexCoord(0.08, 0.92, 0.08, 0.92); ic.tex = t
         local cd = CreateFrame("Cooldown", nil, ic, "CooldownFrameTemplate"); cd:SetAllPoints(); ic.cd = cd
+        cd:SetFrameLevel(ic:GetFrameLevel() + 1)
         local cnt = ic:CreateFontString(nil, "OVERLAY", "NumberFontNormalSmall"); cnt:SetPoint("BOTTOMRIGHT", 1, 0); ic.cnt = cnt
+        -- remaining-time text over the icon (same idea as DeepwardCC; own timer since we drive SetCooldown)
+        local tm = cd:CreateFontString(nil, "OVERLAY"); tm:SetPoint("CENTER", ic, "CENTER", 0, 0)
+        tm:SetFont(STANDARD_TEXT_FONT, 10, "OUTLINE"); ic.timer = tm
         BorderFrame(ic, ic:GetFrameLevel(), 1)
         ic:Hide()
         o.auraIcons[i] = ic
@@ -331,7 +335,19 @@ local function UpdatePlate(o)
                 if ic._cnt ~= cn then ic.cnt:SetText(cn > 0 and cn or ""); ic._cnt = cn end
                 if duration and duration > 0 and expiration then
                     if ic._exp ~= expiration then ic.cd:SetCooldown(expiration - duration, duration); ic.cd:Show(); ic._exp = expiration end
-                elseif ic._exp ~= 0 then ic.cd:Hide(); ic._exp = 0 end
+                    -- remaining-time text (updates as it counts down; colour ramps as it runs low)
+                    local rem = expiration - GetTime()
+                    if rem > 0 then
+                        if rem >= 60 then ic.timer:SetText(math.floor(rem / 60 + 0.5) .. "m")
+                        else ic.timer:SetText(("%d"):format(rem + 0.5)) end
+                        if rem <= 3 then ic.timer:SetTextColor(1, 0.2, 0.2)
+                        elseif rem <= 8 then ic.timer:SetTextColor(1, 0.9, 0.2)
+                        else ic.timer:SetTextColor(1, 1, 1) end
+                    else ic.timer:SetText("") end
+                else
+                    if ic._exp ~= 0 then ic.cd:Hide(); ic._exp = 0 end
+                    ic.timer:SetText("")
+                end
                 if not ic:IsShown() then ic:Show() end
             end
         end
