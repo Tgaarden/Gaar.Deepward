@@ -76,44 +76,19 @@ local function GetButton(bag, slot)
 end
 
 local RefreshList
+local DoSort   -- forward declaration (defined with the cleanup engine below)
 
 local function Layout()
-    -- collect all slots
+    -- The LIVE view is always in fixed slot order (bag 0..4, slot 1..n). It never re-sorts on its own, so an
+    -- item stays exactly where you drop it — manual arrangement is free and never snaps back. "Sort" and
+    -- "Clean" are one-shot actions that physically move items in the bags (below), not a live display filter.
     local slots = {}
     for bag = 0, 4 do
         local n = GetContainerNumSlots(bag) or 0
-        for slot = 1, n do
-            local tex, count, _, quality = GetContainerItemInfo(bag, slot)
-            local name
-            local link = GetContainerItemLink(bag, slot)
-            if link then name = link:match("%[(.-)%]") end
-            slots[#slots + 1] = { bag = bag, slot = slot, tex = tex, quality = quality or -1, name = name or "" }
-        end
-    end
-    -- sort
-    local mode = DB().sort
-    if mode == "quality" then
-        table.sort(slots, function(a, b)
-            if (a.tex and 1 or 0) ~= (b.tex and 1 or 0) then return a.tex and true or false end   -- items before empties
-            if a.quality ~= b.quality then return a.quality > b.quality end
-            return a.name < b.name
-        end)
-    elseif mode == "name" then
-        table.sort(slots, function(a, b)
-            if (a.tex and 1 or 0) ~= (b.tex and 1 or 0) then return a.tex and true or false end
-            return a.name < b.name
-        end)
-    end
-    -- Clean/compact: push all occupied slots to the top-left (keeping their sorted order), empties after.
-    if DB().compact then
-        local occ, emp = {}, {}
-        for _, s in ipairs(slots) do if s.tex then occ[#occ + 1] = s else emp[#emp + 1] = s end end
-        for _, e in ipairs(emp) do occ[#occ + 1] = e end
-        slots = occ
+        for slot = 1, n do slots[#slots + 1] = { bag = bag, slot = slot } end
     end
     -- columns derived from the current window width (so resizing reflows the grid)
     COLS = math.max(6, math.floor((f:GetWidth() - 28) / SIZE))
-    -- place
     local top = -40
     for i, s in ipairs(slots) do
         local b = GetButton(s.bag, s.slot)
@@ -125,7 +100,7 @@ local function Layout()
     end
     local rows = math.max(9, math.ceil(#slots / COLS))   -- always at least 9 rows tall
     f:SetHeight(40 + rows * SIZE + 46)   -- width is user-controlled (resize); only height auto-fits (extra footer air)
-    sortBtn:SetText("Sort: " .. mode)
+    sortBtn:SetText("Sort: " .. DB().sort)
     cleanBtn:SetText("Clean")
 end
 
@@ -181,10 +156,13 @@ RefreshList = function()
     footer:SetText(("%s          %s%d       %s%d"):format(coins, dt, GetItemCount(DT_ITEM) or 0, vt, GetItemCount(VT_ITEM) or 0))
 end
 
+-- Sort = a ONE-SHOT physical sort by the cycled key (slot = leave as-is / free). It moves the real items,
+-- then the live slot-order view shows the result and it stays put until you move something by hand.
 sortBtn:SetScript("OnClick", function()
     local m = DB().sort
     DB().sort = (m == "slot") and "quality" or (m == "quality") and "name" or "slot"
-    RefreshList()
+    sortBtn:SetText("Sort: " .. DB().sort)
+    if DoSort then DoSort() end
 end)
 -- ---------------------------------------------------------------------------
 -- Clean: a real one-shot bag cleanup — merge partial stacks, then sort every
@@ -220,6 +198,18 @@ local function itemAt(bag, slot)
              locked = locked, max = maxStack or 1, name = (link:match("%[(.-)%]") or "") }
 end
 
+-- comparators for the one-shot physical sort (chosen by the Sort button); default is by quality
+local function cmpQuality(a, b)
+    if a.quality ~= b.quality then return a.quality > b.quality end
+    if a.name ~= b.name then return a.name < b.name end
+    return a.count > b.count
+end
+local function cmpName(a, b)
+    if a.name ~= b.name then return a.name < b.name end
+    return a.quality > b.quality
+end
+local activeCmp = cmpQuality
+
 -- merge one partial stack onto an earlier partial of the same item; true = did work
 local function stackStep(order)
     local firstPartial = {}
@@ -247,11 +237,7 @@ local function sortStep(order)
         local it = itemAt(p.bag, p.slot)
         if it then it.bag, it.slot = p.bag, p.slot; items[#items + 1] = it end
     end
-    table.sort(items, function(a, b)
-        if a.quality ~= b.quality then return a.quality > b.quality end
-        if a.name ~= b.name then return a.name < b.name end
-        return a.count > b.count
-    end)
+    table.sort(items, activeCmp)
     for i, p in ipairs(order) do
         local want = items[i]
         if not want then return false end       -- rest are empty slots; done
@@ -293,13 +279,24 @@ cleanDriver:SetScript("OnUpdate", function(self)
     end
 end)
 
-local function DoClean()
+local function startCleanRun(cmp)
     if cleanDriver:IsShown() then return end   -- already running; one click = one pass
     if InCombatLockdown() then
         DEFAULT_CHAT_FRAME:AddMessage("Deepward Bags: kan ikke rydde i kamp.")
         return
     end
+    activeCmp = cmp
     cleanTicks = 0; cleanPhase = "stack"; cleanDriver:Show()
+end
+
+local function DoClean() startCleanRun(cmpQuality) end
+
+-- assigned to the forward-declared DoSort so the Sort button (defined earlier) can call it
+DoSort = function()
+    local key = DB().sort
+    if key == "quality" then startCleanRun(cmpQuality)
+    elseif key == "name" then startCleanRun(cmpName) end
+    -- "slot": free/natural order — no physical sort
 end
 
 cleanBtn:SetScript("OnClick", DoClean)
