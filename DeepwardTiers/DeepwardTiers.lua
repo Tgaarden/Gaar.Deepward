@@ -2181,13 +2181,7 @@ local function DwCreateBotBar()
     bar:RegisterForDrag("LeftButton")
     bar:SetScript("OnDragStart", function(self) if not (DeepwardTiersDB and DeepwardTiersDB.botBarLocked) then self:StartMoving() end end)
     bar:SetScript("OnDragStop", function(self) self:StopMovingOrSizing(); DwBotBarSavePos() end)
-    bar:SetBackdrop({
-        bgFile   = "Interface\\DialogFrame\\UI-DialogBox-Background",
-        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-        tile = true, tileSize = 16, edgeSize = 12,
-        insets = { left = 4, right = 4, top = 4, bottom = 4 },
-    })
-    bar:SetBackdropColor(0, 0, 0, 0.7)
+    -- no bar backdrop/frame — just the buttons, each with its own action-button border (below)
 
     local title = bar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     title:SetPoint("TOP", 0, -3)
@@ -2197,8 +2191,16 @@ local function DwCreateBotBar()
         local b = CreateFrame("Button", nil, bar)
         b:SetSize(SIZE, SIZE)
         b:SetPoint("TOPLEFT", EDGE + (i - 1) * STEP, -HDR)
-        b:SetNormalTexture(act.icon)
-        b:GetNormalTexture():SetTexCoord(0.08, 0.92, 0.08, 0.92)   -- trim the default icon border
+        -- spell icon on ARTWORK, inset so the action-button border frames it
+        local ic = b:CreateTexture(nil, "ARTWORK")
+        ic:SetPoint("TOPLEFT", 2, -2); ic:SetPoint("BOTTOMRIGHT", -2, 2)
+        ic:SetTexture(act.icon); ic:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        -- standard action-button border (the ornate square slot), overflowing the button like the real bars
+        b:SetNormalTexture("Interface\\Buttons\\UI-Quickslot2")
+        local nt = b:GetNormalTexture()
+        nt:ClearAllPoints()
+        nt:SetPoint("TOPLEFT", -SIZE * 0.2, SIZE * 0.2)
+        nt:SetPoint("BOTTOMRIGHT", SIZE * 0.2, -SIZE * 0.2)
         b:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square")
         b:GetHighlightTexture():SetBlendMode("ADD")
         b:SetPushedTexture("Interface\\Buttons\\UI-Quickslot-Depress")
