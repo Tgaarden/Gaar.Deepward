@@ -20,10 +20,22 @@ local function DB()
     if d.showLatency == nil then d.showLatency = true end
     if d.spark == nil then d.spark = true end
     if d.showTotal == nil then d.showTotal = true end   -- "remain / total" instead of just remain
+    if d.showTarget == nil then d.showTarget = true end -- name of who the cast is on
+    if d.shield == nil then d.shield = true end         -- shield overlay on uninterruptible casts
+    if d.fade == nil then d.fade = true end             -- fade-out when a cast finishes
+    if d.fontSize == nil then d.fontSize = 11 end
+    if d.texture == nil then d.texture = "Interface\\TargetingFrame\\UI-StatusBar" end
     if d.pos == nil then d.pos = {} end   -- [unit] = {point, x, y}
     if d.size == nil then d.size = {} end  -- [unit] = {w, h} (resize grip; overrides the default)
     return d
 end
+
+-- a few built-in bar textures to choose from
+local TEXTURES = {
+    { label = "Blizzard", tex = "Interface\\TargetingFrame\\UI-StatusBar" },
+    { label = "Smooth",   tex = "Interface\\RaidFrame\\Raid-Bar-Hp-Fill" },
+    { label = "Flat",     tex = "Interface\\Buttons\\WHITE8x8" },
+}
 
 -- default anchor + size per unit (taller than before)
 local DEFAULTS = {
@@ -53,7 +65,15 @@ local function ApplyCastSize(f)
     local h = f:GetHeight()
     local isz = math.max(6, h - 4)
     f.icon:SetSize(isz, isz)
+    if f.shield then f.shield:SetSize(isz * 1.6, isz * 1.6) end
     if f.spark then f.spark:SetHeight(h * 2) end
+end
+
+local function ApplyFonts(f)
+    local s = DB().fontSize
+    if f.name then f.name:SetFont(STANDARD_TEXT_FONT, s, "OUTLINE") end
+    if f.time then f.time:SetFont(STANDARD_TEXT_FONT, s, "OUTLINE") end
+    if f.target then f.target:SetFont(STANDARD_TEXT_FONT, math.max(8, s - 1), "OUTLINE") end
 end
 
 local function MakeBar(unit)
@@ -101,11 +121,22 @@ local function MakeBar(unit)
     f.spark:SetWidth(18)
     f.spark:Hide()
 
+    -- interrupt shield overlay (uninterruptible casts), centered on the icon
+    f.shield = f:CreateTexture(nil, "OVERLAY")
+    f.shield:SetTexture("Interface\\CastingBar\\UI-CastingBar-Small-Shield")
+    f.shield:SetPoint("CENTER", f.icon, "CENTER", 0, 0)
+    f.shield:Hide()
+
     -- texts
     f.name = f.bar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     f.name:SetPoint("LEFT", 4, 0); f.name:SetJustifyH("LEFT")
     f.time = f.bar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     f.time:SetPoint("RIGHT", -4, 0); f.time:SetJustifyH("RIGHT")
+    -- cast-target name (who the cast is on), centered
+    f.target = f.bar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    f.target:SetPoint("CENTER", 0, 0); f.target:SetJustifyH("CENTER")
+    f.target:SetTextColor(1, 0.9, 0.6)
+    ApplyFonts(f)
 
     -- resize grip (drag to set width + height; shift-drag the bar still moves it)
     f:SetResizable(true)
@@ -128,16 +159,28 @@ local function MakeBar(unit)
     return f
 end
 
+-- best-effort cast target on 3.3.5 (no API for it): the unit's current target
+local function CastTargetName(unit)
+    local tu = (unit == "player") and "target" or (unit .. "target")
+    if UnitExists(tu) then return UnitName(tu) end
+end
+
 local function StartCast(f)
     local name, icon, startMs, endMs, notInt, channel = CastInfo(f.unit)
     if not name then f:Hide(); return end
     f.startMs, f.endMs, f.channel, f._test = startMs, endMs, channel, nil
+    f:SetAlpha(1); f.fading = nil
+    f.bar:SetStatusBarTexture(DB().texture)
     f.icon:SetTexture(icon or "Interface\\Icons\\INV_Misc_QuestionMark")
     f.name:SetText(name)
     -- colour: channel green, uninterruptible grey, normal gold
     if notInt then f.bar:SetStatusBarColor(0.6, 0.6, 0.6)
     elseif channel then f.bar:SetStatusBarColor(0.2, 0.75, 0.3)
     else f.bar:SetStatusBarColor(1.0, 0.75, 0.1) end
+    -- interrupt shield + cast target
+    if DB().shield and notInt then f.shield:Show() else f.shield:Hide() end
+    local tn = DB().showTarget and CastTargetName(f.unit)
+    f.target:SetText(tn and ("→ " .. tn) or "")
     -- latency safe-zone: the last <lag> ms of the cast. Compute the fraction here, apply the width in
     -- OnUpdate — the bar has no real width until it's shown, so setting it now gave a zero-width (invisible)
     -- zone. Player's own casts only, not channels.
@@ -155,6 +198,9 @@ local function StopCast(f, failed)
         f.bar:SetStatusBarColor(0.8, 0.1, 0.1)
         f.name:SetText(f.name:GetText() or "")
         f.fadeAt = GetTime() + 0.5   -- brief red flash then hide
+    elseif DB().fade then
+        f.bar:SetValue(f.channel and 0 or 1); f.spark:Hide()
+        f.fading = true; f.fadeStart = GetTime()   -- smooth fade-out on a completed cast
     else
         f:Hide()
     end
@@ -163,6 +209,11 @@ end
 
 local function OnUpdate(f)
     if not f.startMs then
+        if f.fading then
+            local a = 1 - (GetTime() - f.fadeStart) / 0.3
+            if a <= 0 then f.fading = nil; f:SetAlpha(1); f:Hide() else f:SetAlpha(a) end
+            return
+        end
         if f.fadeAt and GetTime() > f.fadeAt then f.fadeAt = nil; f:Hide() end
         return
     end
@@ -215,8 +266,13 @@ local testing = false
 local TEST_LABEL = { player = "Player", target = "Target", focus = "Focus", pet = "Pet" }
 local function StartTestCast(f)
     f.startMs = GetTime() * 1000; f.endMs = f.startMs + 10000; f.channel = false; f.lagFrac = nil; f._test = true
+    f:SetAlpha(1); f.fading = nil
+    f.bar:SetStatusBarTexture(DB().texture)
     f.icon:SetTexture("Interface\\Icons\\Spell_Fire_FlameBolt")
-    f.name:SetText("Test: " .. (TEST_LABEL[f.unit] or f.unit)); f.bar:SetStatusBarColor(1, 0.75, 0.1); f:Show()
+    f.name:SetText("Test: " .. (TEST_LABEL[f.unit] or f.unit)); f.bar:SetStatusBarColor(1, 0.75, 0.1)
+    f.shield:Hide()
+    f.target:SetText(DB().showTarget and "→ Target" or "")
+    f:Show()
 end
 local function SetTesting(on)
     testing = on
@@ -290,6 +346,28 @@ local function Menu()
         func = function() DB().spark = not DB().spark end }
     t[#t + 1] = { text = "Show total cast time", checked = DB().showTotal, keepShownOnClick = true,
         func = function() DB().showTotal = not DB().showTotal end }
+    t[#t + 1] = { text = "Show cast target name", checked = DB().showTarget, keepShownOnClick = true,
+        func = function() DB().showTarget = not DB().showTarget end }
+    t[#t + 1] = { text = "Interrupt shield icon", checked = DB().shield, keepShownOnClick = true,
+        func = function() DB().shield = not DB().shield end }
+    t[#t + 1] = { text = "Fade out on finish", checked = DB().fade, keepShownOnClick = true,
+        func = function() DB().fade = not DB().fade end }
+    t[#t + 1] = { text = "Bar texture", notCheckable = true, hasArrow = true, menuList = (function()
+        local m = {}
+        for _, tx in ipairs(TEXTURES) do
+            m[#m + 1] = { text = tx.label, checked = (DB().texture == tx.tex),
+                func = function() DB().texture = tx.tex; for _, u in ipairs(UNITS) do bars[u].bar:SetStatusBarTexture(tx.tex) end end }
+        end
+        return m
+    end)() }
+    t[#t + 1] = { text = "Font size", notCheckable = true, hasArrow = true, menuList = (function()
+        local m = {}
+        for _, s in ipairs({ 9, 10, 11, 12, 14 }) do
+            m[#m + 1] = { text = tostring(s), checked = (DB().fontSize == s),
+                func = function() DB().fontSize = s; for _, u in ipairs(UNITS) do ApplyFonts(bars[u]) end end }
+        end
+        return m
+    end)() }
     t[#t + 1] = { text = (DB().locked and "Unlock (shift-drag move, grip resize)" or "Lock position/size"), notCheckable = true,
         func = function() DB().locked = not DB().locked
             for _, u in ipairs(UNITS) do if bars[u].grip then if DB().locked then bars[u].grip:Hide() else bars[u].grip:Show() end end end
