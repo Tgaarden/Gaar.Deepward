@@ -305,6 +305,8 @@ local function UpdatePlate(o)
     end
 
     -- my debuffs on the target (target plate only). Player-cast HARMFUL auras, centered under the bar.
+    -- Cached: the cooldown swipe and icon positions are only rewritten when they actually change, otherwise
+    -- calling SetCooldown/SetPoint every tick restarts the swipe and makes the icons flicker.
     local shown = 0
     if DB().auras and isTarget then
         for i = 1, 40 do
@@ -313,16 +315,21 @@ local function UpdatePlate(o)
             if caster == "player" and shown < AURA_N then
                 shown = shown + 1
                 local ic = o.auraIcons[shown]
-                ic.tex:SetTexture(icon)
-                if count and count > 1 then ic.cnt:SetText(count) else ic.cnt:SetText("") end
-                if duration and duration > 0 and expiration then ic.cd:SetCooldown(expiration - duration, duration); ic.cd:Show()
-                else ic.cd:Hide() end
-                ic:Show()
+                if ic._icon ~= icon then ic.tex:SetTexture(icon); ic._icon = icon end
+                local cn = (count and count > 1) and count or 0
+                if ic._cnt ~= cn then ic.cnt:SetText(cn > 0 and cn or ""); ic._cnt = cn end
+                if duration and duration > 0 and expiration then
+                    if ic._exp ~= expiration then ic.cd:SetCooldown(expiration - duration, duration); ic.cd:Show(); ic._exp = expiration end
+                elseif ic._exp ~= 0 then ic.cd:Hide(); ic._exp = 0 end
+                if not ic:IsShown() then ic:Show() end
             end
         end
     end
-    for i = shown + 1, AURA_N do o.auraIcons[i]:Hide() end
-    if shown > 0 then   -- centre the visible icons in the row
+    for i = shown + 1, AURA_N do
+        if o.auraIcons[i]:IsShown() then o.auraIcons[i]:Hide() end
+    end
+    if shown ~= o._lastShown then   -- re-centre only when the icon count changes
+        o._lastShown = shown
         local step = AURA_SZ + 2
         local startX = -((shown * step - 2) / 2) + AURA_SZ / 2
         for i = 1, shown do
