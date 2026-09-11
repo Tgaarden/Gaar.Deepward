@@ -19,6 +19,8 @@ local function DB()
     if d.percent  == nil then d.percent = true end
     if d.hpHeight == nil then d.hpHeight = 10 end
     if d.nameSize == nil then d.nameSize = 11 end
+    if d.threat   == nil then d.threat = true end      -- colour the target plate by your threat
+    if d.role     == nil then d.role = "dps" end       -- "tank" flips the good/bad colours
     return d
 end
 
@@ -71,12 +73,30 @@ local function StylePlate(plate)
     end
 
     plate._hb = hb
+    plate._name = name
     styled[plate] = true
 end
 
 local function UpdatePlate(plate)
     local hb = plate._hb
     if not hb then return end
+    -- Threat colour on the TARGET's plate (3.3.5 has no per-plate unit, so only the target can be read).
+    -- dps/healer: green = safe, orange = getting close, red = you pulled aggro. tank: green = you hold it,
+    -- red = you lost it. Non-target plates keep Blizzard's reaction colour.
+    local nameFS = plate._name
+    if DB().threat and nameFS and UnitExists("target") and UnitCanAttack("player", "target")
+       and nameFS:GetText() == UnitName("target") then
+        local tanking, status = UnitDetailedThreatSituation("player", "target")
+        local r, g, b
+        if DB().role == "tank" then
+            if tanking then r, g, b = 0.2, 0.9, 0.2 else r, g, b = 0.9, 0.2, 0.2 end
+        else
+            if tanking then r, g, b = 0.9, 0.2, 0.2
+            elseif status and status >= 1 then r, g, b = 1.0, 0.8, 0.0
+            else r, g, b = 0.3, 0.9, 0.3 end
+        end
+        hb:SetStatusBarColor(r, g, b)
+    end
     if DB().percent and plate:IsShown() then
         local _, max = hb:GetMinMaxValues()
         local cur = hb:GetValue()
@@ -123,6 +143,12 @@ local function Menu()
           func = function() DB().enabled = not DB().enabled end },
         { text = "Health percent", checked = DB().percent, keepShownOnClick = true,
           func = function() DB().percent = not DB().percent end },
+        { text = "Threat colour on target", checked = DB().threat, keepShownOnClick = true,
+          func = function() DB().threat = not DB().threat end },
+        { text = "My role", notCheckable = true, hasArrow = true, menuList = {
+            { text = "DPS / Healer", checked = (DB().role == "dps"),  func = function() DB().role = "dps" end },
+            { text = "Tank",         checked = (DB().role == "tank"), func = function() DB().role = "tank" end },
+        } },
         { text = "Name size", notCheckable = true, hasArrow = true, menuList = {
             { text = "Small (10)",  checked = (DB().nameSize == 10), func = function() DB().nameSize = 10; styled = {} end },
             { text = "Normal (11)", checked = (DB().nameSize == 11), func = function() DB().nameSize = 11; styled = {} end },

@@ -95,6 +95,8 @@ local function Layout()
             return a.name < b.name
         end)
     end
+    -- columns derived from the current window width (so resizing reflows the grid)
+    COLS = math.max(6, math.floor((f:GetWidth() - 28) / SIZE))
     -- place
     local top = -40
     for i, s in ipairs(slots) do
@@ -106,7 +108,7 @@ local function Layout()
         b:Show()
     end
     local rows = math.max(1, math.ceil(#slots / COLS))
-    f:SetSize(14 * 2 + COLS * SIZE, 40 + rows * SIZE + 30)
+    f:SetHeight(40 + rows * SIZE + 30)   -- width is user-controlled (resize); only height auto-fits
     sortBtn:SetText("Sort: " .. mode)
 end
 
@@ -117,9 +119,16 @@ local function UpdateButton(bag, slot)
     SetItemButtonTexture(b, tex or "")
     SetItemButtonCount(b, count or 0)
     SetItemButtonDesaturated(b, locked)
-    if b.SetBackdrop then end
-    local q = link and quality or nil
-    if SetItemButtonQuality then SetItemButtonQuality(b, q, link) end
+    -- rarity border: recolour the slot's normal texture (3.3.5 has no SetItemButtonQuality/IconBorder)
+    local nt = b:GetNormalTexture()
+    if nt then
+        if quality and quality >= 2 then
+            local r, g, bl = GetItemQualityColor(quality)
+            nt:SetVertexColor(r, g, bl); nt:SetAlpha(1)
+        else
+            nt:SetVertexColor(1, 1, 1); nt:SetAlpha(tex and 0.5 or 1)
+        end
+    end
     local start, dur, en = GetContainerItemCooldown(bag, slot)
     local cd = _G[b:GetName() .. "Cooldown"]
     if cd then CooldownFrame_SetTimer(cd, start, dur, en) end
@@ -132,10 +141,12 @@ RefreshList = function()
         for slot = 1, n do UpdateButton(bag, slot) end
     end
     Layout()
-    -- footer: gold + tokens
-    local g = math.floor(GetMoney() / 10000)
-    footer:SetText(("|cffffd700%dg|r    |cff33ff99DT:|r %d   |cff33ccffVT:|r %d"):format(
-        g, GetItemCount(DT_ITEM) or 0, GetItemCount(VT_ITEM) or 0))
+    -- footer: money with real g/s/c coin icons + token item icons
+    local coins = GetCoinTextureString(GetMoney())
+    local dtIcon = GetItemIcon(DT_ITEM); local vtIcon = GetItemIcon(VT_ITEM)
+    local dt = dtIcon and ("|T" .. dtIcon .. ":14:14|t ") or "DT "
+    local vt = vtIcon and ("|T" .. vtIcon .. ":14:14|t ") or "VT "
+    footer:SetText(("%s     %s%d    %s%d"):format(coins, dt, GetItemCount(DT_ITEM) or 0, vt, GetItemCount(VT_ITEM) or 0))
 end
 
 sortBtn:SetScript("OnClick", function()
@@ -151,11 +162,51 @@ ev:RegisterEvent("BAG_UPDATE_COOLDOWN")
 ev:RegisterEvent("PLAYER_MONEY")
 ev:SetScript("OnEvent", function() RefreshList() end)
 
-local function Toggle()
-    if f:IsShown() then f:Hide() else f:Show(); RefreshList() end
-end
+-- resize + scale
+f:SetResizable(true)
+f:SetMinResize(6 * SIZE + 28, 120)
+f:SetMaxResize(20 * SIZE + 28, 900)
+f:SetWidth(12 * SIZE + 28); f:SetHeight(320)
+f:SetScale(DB().scale or 1)
+local grip = CreateFrame("Button", nil, f)
+grip:SetSize(16, 16); grip:SetPoint("BOTTOMRIGHT", -4, 4)
+grip:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
+grip:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
+grip:SetScript("OnMouseDown", function() f:StartSizing("BOTTOMRIGHT") end)
+grip:SetScript("OnMouseUp", function() f:StopMovingOrSizing(); RefreshList() end)
+f:SetScript("OnSizeChanged", function() RefreshList() end)
+f:EnableMouseWheel(true)
+f:SetScript("OnMouseWheel", function(_, dir)
+    local s = math.max(0.6, math.min(1.6, (DB().scale or 1) + (dir > 0 and 0.05 or -0.05)))
+    DB().scale = s; f:SetScale(s)
+end)
+
+local function Show() f:Show(); RefreshList() end
+local function Hide() f:Hide() end
+local function Toggle() if f:IsShown() then Hide() else Show() end end
 _G.DeepwardBags_Toggle = Toggle
+_G.DeepwardBags_Show = Show
+_G.DeepwardBags_Hide = Hide
 
 SLASH_DEEPWARDBAGS1 = "/dwbags"
 SLASH_DEEPWARDBAGS2 = "/dwbag"
 SlashCmdList["DEEPWARDBAGS"] = Toggle
+
+-- Override the default bag open/close so the "B" key, the bag-bar buttons and "Open all bags" all drive our
+-- window (and Blizzard's container frames stay closed). Gated by DB().override.
+local function DB2() local d = DB(); if d.override == nil then d.override = true end; return d end
+if DB2().override then
+    local function openAll() if DB2().override then Show() else return end end
+    ToggleBackpack = function() if DB2().override then Toggle() else end end
+    ToggleBag      = function() if DB2().override then Toggle() else end end
+    ToggleAllBags  = function() if DB2().override then Toggle() else end end
+    OpenAllBags    = function() if DB2().override then Show() else end end
+    OpenBackpack   = function() if DB2().override then Show() else end end
+    CloseAllBags   = function() if DB2().override then Hide() else end end
+    CloseBackpack  = function() if DB2().override then Hide() else end end
+    -- keep Blizzard container frames shut if anything still opens them
+    for i = 1, NUM_CONTAINER_FRAMES or 13 do
+        local cf = _G["ContainerFrame" .. i]
+        if cf then cf:HookScript("OnShow", function(self) if DB2().override then self:Hide() end end) end
+    end
+end
