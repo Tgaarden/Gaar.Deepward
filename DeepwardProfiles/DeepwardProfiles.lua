@@ -66,21 +66,40 @@ local function ApplySnapshot(snap)
     return applied
 end
 
+local function countKeys(t)
+    local n = 0
+    if type(t) == "table" then for _ in pairs(t) do n = n + 1 end end
+    return n
+end
+
+-- short label + key count per DB, e.g. "Cast(11)"; flags an empty table with "(0!)" so a setting that
+-- never got configured (and would fall back to defaults on the other char) is visible.
+local function report(snap)
+    local out = {}
+    for _, n in ipairs(DB_NAMES) do
+        if snap[n] ~= nil then
+            local c = countKeys(snap[n])
+            out[#out + 1] = (n:gsub("^Deepward", ""):gsub("DB$", "")) .. (c == 0 and "(0!)" or ("(" .. c .. ")"))
+        else
+            out[#out + 1] = (n:gsub("^Deepward", ""):gsub("DB$", "")) .. "(missing!)"
+        end
+    end
+    return table.concat(out, ", ")
+end
+
 local function SaveProfile(name)
     if not name or name == "" then return false end
     local snap = Snapshot()
     PDB().profiles[name] = snap
-    local got = {}
-    for _, n in ipairs(DB_NAMES) do
-        if snap[n] then got[#got + 1] = (n:gsub("^Deepward", ""):gsub("DB$", "")) end
-    end
-    return true, got
+    return true, report(snap)
 end
 
 local function LoadProfile(name)
     local p = PDB().profiles[name]
     if not p then return false end
     ApplySnapshot(p)
+    -- stash a report to print AFTER the reload (the reload clears the chat), so you can confirm what landed
+    PDB()._pending = "loaded '" .. name .. "' -> " .. report(p)
     return true
 end
 
@@ -170,8 +189,8 @@ local function BuildUI()
     saveBtn:SetScript("OnClick", function()
         local n = nameBox:GetText()
         if n and n ~= "" then
-            local _, got = SaveProfile(n)
-            say("saved '" .. n .. "' — captured: " .. table.concat(got or {}, ", ")); RefreshList()
+            local _, rep = SaveProfile(n)
+            say("saved '" .. n .. "' -> " .. (rep or "")); RefreshList()
         else say("type a name first.") end
     end)
 
@@ -267,6 +286,14 @@ _G.DeepwardProfiles_Toggle = Toggle
 -- ---------------------------------------------------------------------------
 -- Slash
 -- ---------------------------------------------------------------------------
+-- after a profile Load reloads the UI, print what actually landed (survives the reload via _pending)
+local flush = CreateFrame("Frame")
+flush:RegisterEvent("PLAYER_LOGIN")
+flush:SetScript("OnEvent", function()
+    local p = PDB()
+    if p._pending then say(p._pending); p._pending = nil end
+end)
+
 SLASH_DEEPWARDPROFILE1 = "/dwprofile"
 SLASH_DEEPWARDPROFILE2 = "/dwprofiles"
 SlashCmdList["DEEPWARDPROFILE"] = function(msg)
@@ -274,7 +301,7 @@ SlashCmdList["DEEPWARDPROFILE"] = function(msg)
     local cmd, arg = msg:match("^(%S*)%s*(.-)%s*$")
     cmd = (cmd or ""):lower()
     if cmd == "save" and arg ~= "" then
-        local _, got = SaveProfile(arg); say("saved '" .. arg .. "' — captured: " .. table.concat(got or {}, ", ")); RefreshList()
+        local _, rep = SaveProfile(arg); say("saved '" .. arg .. "' -> " .. (rep or "")); RefreshList()
     elseif cmd == "load" and arg ~= "" then
         if LoadProfile(arg) then say("loading '" .. arg .. "' …"); ReloadUI() else say("no profile named '" .. arg .. "'.") end
     elseif cmd == "list" then
