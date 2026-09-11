@@ -123,7 +123,7 @@ local function Layout()
         b:SetPoint("TOPLEFT", f, "TOPLEFT", 14 + col * SIZE, top - row * SIZE)
         b:Show()
     end
-    local rows = math.max(1, math.ceil(#slots / COLS))
+    local rows = math.max(9, math.ceil(#slots / COLS))   -- always at least 9 rows tall
     f:SetHeight(40 + rows * SIZE + 46)   -- width is user-controlled (resize); only height auto-fits (extra footer air)
     sortBtn:SetText("Sort: " .. mode)
     cleanBtn:SetText("Clean")
@@ -313,7 +313,7 @@ ev:SetScript("OnEvent", function() RefreshList() end)
 
 -- resize + scale
 f:SetResizable(true)
-f:SetMinResize(6 * SIZE + 28, 120)
+f:SetMinResize(6 * SIZE + 28, 40 + 9 * SIZE + 46)   -- min height = 9 rows
 f:SetMaxResize(20 * SIZE + 28, 900)
 f:SetWidth(6 * SIZE + 28); f:SetHeight(320)   -- default to the narrowest allowed width
 f:SetScale(DB().scale or 1)
