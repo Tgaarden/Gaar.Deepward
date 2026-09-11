@@ -150,6 +150,17 @@ local function UpdateButton(bag, slot)
     else
         b._qf:Hide()
     end
+    -- keep/no-sell padlock (mirrors DeepwardUI's Sell All "kept" flag; shift-click a slot to toggle)
+    if not b._keepLock then
+        local t = b:CreateTexture(nil, "OVERLAY")
+        t:SetSize(16, 16)
+        t:SetPoint("BOTTOMRIGHT", -1, 1)
+        t:SetTexture(_G.DeepwardUI_KeepLockTexture or "Interface\\AddOns\\DeepwardUI\\keeplock")
+        b._keepLock = t
+    end
+    local id = link and tonumber(link:match("item:(%d+)"))
+    if id and _G.DeepwardUI_IsKept and _G.DeepwardUI_IsKept(id) then b._keepLock:Show() else b._keepLock:Hide() end
+
     local start, dur, en = GetContainerItemCooldown(bag, slot)
     local cd = _G[b:GetName() .. "Cooldown"]
     if cd then CooldownFrame_SetTimer(cd, start, dur, en) end
@@ -311,6 +322,7 @@ local function Toggle() if f:IsShown() then Hide() else Show() end end
 _G.DeepwardBags_Toggle = Toggle
 _G.DeepwardBags_Show = Show
 _G.DeepwardBags_Hide = Hide
+_G.DeepwardBags_Refresh = RefreshList
 
 SLASH_DEEPWARDBAGS1 = "/dwbags"
 SLASH_DEEPWARDBAGS2 = "/dwbag"

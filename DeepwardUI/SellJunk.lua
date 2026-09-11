@@ -26,6 +26,8 @@ if type(DeepwardUIDB.noSell) ~= "table" then DeepwardUIDB.noSell = {} end
 local function DwIsKept(itemId)   -- user flag OR an always-protected key item
     return itemId and (DeepwardUIDB.noSell[itemId] == true or PROTECTED[itemId] == true)
 end
+_G.DeepwardUI_IsKept = DwIsKept   -- exposed so DeepwardBags can draw the same padlock in its window
+_G.DeepwardUI_KeepLockTexture = "Interface\\AddOns\\DeepwardUI\\keeplock"
 
 -- Draw/refresh the padlock overlay on every slot of one container frame.
 local function DwUpdateKeepMarkers(frame)
@@ -88,6 +90,7 @@ hooksecurefunc("ContainerFrameItemButton_OnModifiedClick", function(self, button
         print("|cff33ff99Deepward:|r " .. link .. " is now KEPT (Sell All skips it).")
     end
     DwUpdateKeepMarkers(parent)
+    if _G.DeepwardBags_Refresh then _G.DeepwardBags_Refresh() end   -- keep the DeepwardBags window's padlocks in sync
 end)
 
 -- GetItemInfo's 6th return (itemType) for things that count as "resources" — never auto-sold, wherever
