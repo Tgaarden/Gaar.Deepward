@@ -231,9 +231,13 @@ local function UpdatePlate(o)
     local pct = (mx and mx > 0) and (cur / mx) or 1
     o.health:SetMinMaxValues(mn, mx); o.health:SetValue(cur)
 
+    -- Target detection: 3.3.5 has no unit API, so we match by name — but several mobs can share a name, so
+    -- also require this plate to be the one Blizzard keeps at FULL alpha (it fades every non-target plate
+    -- when you have a target). That disambiguates same-named mobs, so target-only features (auras, threat,
+    -- cast, ToT) land on the real target plate instead of every same-named plate.
     local nameText = o.r.name and o.r.name:GetText() or ""
     local isTarget = nameText ~= "" and UnitExists("target") and UnitCanAttack("player", "target")
-                     and nameText == UnitName("target")
+                     and nameText == UnitName("target") and o.plate:GetAlpha() > 0.9
 
     -- colour
     local cr, cg, cb = BarColor(o, isTarget)
