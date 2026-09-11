@@ -27,6 +27,7 @@ local _G = _G
 local WorldFrame = WorldFrame
 local BAR_TEX = "Interface\\TargetingFrame\\UI-StatusBar"
 local WHITE = "Interface\\Buttons\\WHITE8x8"
+local AURA_N, AURA_SZ = 8, 16   -- max debuff icons shown, and their pixel size
 
 local function DB()
     if type(DeepwardPlatesDB) ~= "table" then DeepwardPlatesDB = {} end
@@ -49,6 +50,7 @@ local function DB()
     if d.dimOthers   == nil then d.dimOthers = true end
     if d.dimAlpha    == nil then d.dimAlpha = 0.55 end
     if d.totText     == nil then d.totText = true end
+    if d.auras       == nil then d.auras = true end            -- my debuffs on the target plate
     return d
 end
 
@@ -152,9 +154,10 @@ local function BuildOverlay(plate)
     o.htext = h:CreateFontString(nil, "OVERLAY"); o.htext:SetPoint("CENTER", h, "CENTER", 0, 0)
     o.ttext = h:CreateFontString(nil, "OVERLAY"); o.ttext:SetPoint("RIGHT", h, "RIGHT", -2, 0)
 
-    -- cast bar
+    -- cast bar — floats just OVER the name (above the health bar), so a cast overlaps the name row
     local c = CreateFrame("StatusBar", nil, f); c:SetStatusBarTexture(BAR_TEX)
-    c:SetPoint("TOP", h, "BOTTOM", 0, -3)
+    c:SetPoint("BOTTOM", h, "TOP", 0, 1)
+    c:SetFrameLevel(h:GetFrameLevel() + 4)   -- above the name text
     local cbg = c:CreateTexture(nil, "BACKGROUND"); cbg:SetTexture(0, 0, 0, 0.85)
     cbg:SetPoint("TOPLEFT", -1, 1); cbg:SetPoint("BOTTOMRIGHT", 1, -1)
     BorderFrame(c, c:GetFrameLevel(), 1)
@@ -163,7 +166,24 @@ local function BuildOverlay(plate)
     c.icon = ci; c:Hide()
     o.cast = c
 
-    o.tot = h:CreateFontString(nil, "OVERLAY"); o.tot:SetPoint("TOP", c, "BOTTOM", 0, -1)
+    -- my debuffs on the target — a centered row of icons UNDER the health bar (target plate only; 3.3.5 has
+    -- no unit API for non-target plates, so auras can only be read for the current target).
+    o.auraRow = CreateFrame("Frame", nil, f)
+    o.auraRow:SetPoint("TOP", h, "BOTTOM", 0, -2)
+    o.auraRow:SetSize(DB().width, AURA_SZ)
+    o.auraIcons = {}
+    for i = 1, AURA_N do
+        local ic = CreateFrame("Frame", nil, o.auraRow)
+        ic:SetSize(AURA_SZ, AURA_SZ)
+        local t = ic:CreateTexture(nil, "ARTWORK"); t:SetAllPoints(); t:SetTexCoord(0.08, 0.92, 0.08, 0.92); ic.tex = t
+        local cd = CreateFrame("Cooldown", nil, ic, "CooldownFrameTemplate"); cd:SetAllPoints(); ic.cd = cd
+        local cnt = ic:CreateFontString(nil, "OVERLAY", "NumberFontNormalSmall"); cnt:SetPoint("BOTTOMRIGHT", 1, 0); ic.cnt = cnt
+        BorderFrame(ic, ic:GetFrameLevel(), 1)
+        ic:Hide()
+        o.auraIcons[i] = ic
+    end
+
+    o.tot = h:CreateFontString(nil, "OVERLAY"); o.tot:SetPoint("TOP", o.auraRow, "BOTTOM", 0, -1)
 
     ApplySize(o); SetFonts(o)
     plate:HookScript("OnShow", function() HideDefault(o) end)   -- re-hide the instant Blizzard re-shows the plate
@@ -283,6 +303,33 @@ local function UpdatePlate(o)
     else
         o.frame:SetAlpha(1)
     end
+
+    -- my debuffs on the target (target plate only). Player-cast HARMFUL auras, centered under the bar.
+    local shown = 0
+    if DB().auras and isTarget then
+        for i = 1, 40 do
+            local aname, _, icon, count, _, duration, expiration, caster = UnitAura("target", i, "HARMFUL")
+            if not aname then break end
+            if caster == "player" and shown < AURA_N then
+                shown = shown + 1
+                local ic = o.auraIcons[shown]
+                ic.tex:SetTexture(icon)
+                if count and count > 1 then ic.cnt:SetText(count) else ic.cnt:SetText("") end
+                if duration and duration > 0 and expiration then ic.cd:SetCooldown(expiration - duration, duration); ic.cd:Show()
+                else ic.cd:Hide() end
+                ic:Show()
+            end
+        end
+    end
+    for i = shown + 1, AURA_N do o.auraIcons[i]:Hide() end
+    if shown > 0 then   -- centre the visible icons in the row
+        local step = AURA_SZ + 2
+        local startX = -((shown * step - 2) / 2) + AURA_SZ / 2
+        for i = 1, shown do
+            o.auraIcons[i]:ClearAllPoints()
+            o.auraIcons[i]:SetPoint("CENTER", o.auraRow, "CENTER", startX + (i - 1) * step, 0)
+        end
+    end
 end
 
 -- Scan for new plates + drive live updates, throttled.
@@ -336,6 +383,7 @@ local function Menu()
         { text = "Threat colour on target", checked = DB().threat, keepShownOnClick = true, func = function() DB().threat = not DB().threat end },
         { text = "Threat % text", checked = DB().threatText, keepShownOnClick = true, func = function() DB().threatText = not DB().threatText end },
         { text = "Target-of-target name", checked = DB().totText, keepShownOnClick = true, func = function() DB().totText = not DB().totText end },
+        { text = "My debuffs on target", checked = DB().auras, keepShownOnClick = true, func = function() DB().auras = not DB().auras end },
         { text = "Dim non-target plates", checked = DB().dimOthers, keepShownOnClick = true, func = function() DB().dimOthers = not DB().dimOthers end },
         { text = "My role", notCheckable = true, hasArrow = true, menuList = {
             { text = "DPS / Healer", checked = (DB().role == "dps"), func = function() DB().role = "dps" end },
