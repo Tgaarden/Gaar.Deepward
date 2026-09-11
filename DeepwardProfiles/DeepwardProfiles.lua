@@ -307,6 +307,15 @@ SlashCmdList["DEEPWARDPROFILE"] = function(msg)
     elseif cmd == "list" then
         local names = ProfileNames()
         if #names == 0 then say("no profiles saved.") else say("profiles: " .. table.concat(names, ", ")) end
+    elseif cmd == "dump" then
+        -- print the position-critical LIVE values so you can compare two characters directly
+        local function P(t) if type(t) == "table" and t.point then return t.point .. " " .. math.floor(t.x or 0) .. "," .. math.floor(t.y or 0) else return "default" end end
+        say("--- live positions on this character ---")
+        local c = DeepwardCastDB and DeepwardCastDB.pos or {}
+        say("Cast: player=" .. P(c.player) .. " target=" .. P(c.target) .. " focus=" .. P(c.focus) .. " pet=" .. P(c.pet))
+        say("Meter: " .. P(DeepwardMeterDB) .. " | Threat: " .. P(DeepwardThreatDB))
+        local nf = 0; if DeepwardUIDB and DeepwardUIDB.frames then for _ in pairs(DeepwardUIDB.frames) do nf = nf + 1 end end
+        say("UI moved frames: " .. nf .. " | UI scale=" .. tostring(DeepwardUIDB and DeepwardUIDB.frameScale or 1))
     else
         Toggle()
     end
