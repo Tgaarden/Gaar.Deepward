@@ -34,16 +34,21 @@ title:SetPoint("TOPLEFT", 14, -12); title:SetText("Deepward Bags")
 local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
 close:SetPoint("TOPRIGHT", -6, -6)
 
-local dragBar = CreateFrame("Frame", nil, f); dragBar:SetPoint("TOPLEFT"); dragBar:SetPoint("TOPRIGHT"); dragBar:SetHeight(26)
+local sortBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+sortBtn:SetSize(96, 22); sortBtn:SetPoint("TOPRIGHT", -32, -9)
+
+local cleanBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+cleanBtn:SetSize(66, 22); cleanBtn:SetPoint("RIGHT", sortBtn, "LEFT", -4, 0)
+
+-- drag bar: only the LEFT part of the title row, so it never sits under the buttons and steal their clicks
+local dragBar = CreateFrame("Frame", nil, f); dragBar:SetPoint("TOPLEFT"); dragBar:SetHeight(26)
+dragBar:SetPoint("TOPRIGHT", cleanBtn, "TOPLEFT", -6, 0)
 dragBar:EnableMouse(true); dragBar:RegisterForDrag("LeftButton")
 dragBar:SetScript("OnDragStart", function() f:StartMoving() end)
 dragBar:SetScript("OnDragStop", function() f:StopMovingOrSizing() end)
-
-local sortBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-sortBtn:SetSize(90, 20); sortBtn:SetPoint("TOPRIGHT", -30, -10)
-
-local cleanBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-cleanBtn:SetSize(60, 20); cleanBtn:SetPoint("RIGHT", sortBtn, "LEFT", -4, 0)
+-- buttons above everything else in the title row
+sortBtn:SetFrameLevel(dragBar:GetFrameLevel() + 5)
+cleanBtn:SetFrameLevel(dragBar:GetFrameLevel() + 5)
 
 local footer = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 footer:SetFont(STANDARD_TEXT_FONT, 16, "OUTLINE")   -- bigger; coin icons scale with the font height
@@ -186,7 +191,7 @@ ev:SetScript("OnEvent", function() RefreshList() end)
 f:SetResizable(true)
 f:SetMinResize(6 * SIZE + 28, 120)
 f:SetMaxResize(20 * SIZE + 28, 900)
-f:SetWidth(12 * SIZE + 28); f:SetHeight(320)
+f:SetWidth(6 * SIZE + 28); f:SetHeight(320)   -- default to the narrowest allowed width
 f:SetScale(DB().scale or 1)
 local grip = CreateFrame("Button", nil, f)
 grip:SetSize(16, 16); grip:SetPoint("BOTTOMRIGHT", -4, 4)
