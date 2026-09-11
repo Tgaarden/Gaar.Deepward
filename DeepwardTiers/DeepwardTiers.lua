@@ -1276,6 +1276,15 @@ local function CreateUI()
         if _G.DeepwardCC_Config then _G.DeepwardCC_Config()
         else DEFAULT_CHAT_FRAME:AddMessage("|cffff6666Deepward:|r DeepwardCC addon not loaded.") end
     end)
+    -- Plates (nameplate config) + Bags (one-bag window) on row 2.
+    DwTopToggle("Plates", 58, 14 + 62 + 4 + 52 + 4, -38, function()
+        if _G.DeepwardPlates_Config then _G.DeepwardPlates_Config()
+        else DEFAULT_CHAT_FRAME:AddMessage("|cffff6666Deepward:|r DeepwardPlates addon not loaded.") end
+    end)
+    DwTopToggle("Bags", 52, 14 + 62 + 4 + 52 + 4 + 58 + 4, -38, function()
+        if _G.DeepwardBags_Toggle then _G.DeepwardBags_Toggle()
+        else DEFAULT_CHAT_FRAME:AddMessage("|cffff6666Deepward:|r DeepwardBags addon not loaded.") end
+    end)
 
     frame.summary = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlightLarge")
     frame.summary:SetPoint("TOP", title, "BOTTOM", 0, -8)

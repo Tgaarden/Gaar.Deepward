@@ -1,0 +1,7 @@
+## Interface: 30300
+## Title: Deepward Pawn
+## Notes: Item score from stat weights on tooltips + upgrade check vs your equipped gear. /dwpawn.
+## Author: Deepward
+## Version: 1.0
+## SavedVariables: DeepwardPawnDB
+DeepwardPawn.lua

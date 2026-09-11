@@ -1,0 +1,7 @@
+## Interface: 30300
+## Title: Deepward Plates
+## Notes: Cleaner nameplates — flat health bars, big names, health percent, styled cast bar. /dwplates.
+## Author: Deepward
+## Version: 1.0
+## SavedVariables: DeepwardPlatesDB
+DeepwardPlates.lua
