@@ -126,7 +126,7 @@ local function Layout()
     local rows = math.max(1, math.ceil(#slots / COLS))
     f:SetHeight(40 + rows * SIZE + 46)   -- width is user-controlled (resize); only height auto-fits (extra footer air)
     sortBtn:SetText("Sort: " .. mode)
-    cleanBtn:SetText(DB().compact and "Clean: on" or "Clean")
+    cleanBtn:SetText("Clean")
 end
 
 -- fill one button's icon/count/quality/lock/cooldown (mirrors ContainerFrame_Update for a single slot)
@@ -175,10 +175,109 @@ sortBtn:SetScript("OnClick", function()
     DB().sort = (m == "slot") and "quality" or (m == "quality") and "name" or "slot"
     RefreshList()
 end)
-cleanBtn:SetScript("OnClick", function()
-    DB().compact = not DB().compact
-    RefreshList()
+-- ---------------------------------------------------------------------------
+-- Clean: a real one-shot bag cleanup — merge partial stacks, then sort every
+-- item to the front (quality desc, then name). One move per frame so item
+-- locks resolve between steps; runs only out of combat.
+-- ---------------------------------------------------------------------------
+local function orderSlots()
+    local t = {}
+    for bag = 0, 4 do
+        local n = GetContainerNumSlots(bag) or 0
+        for slot = 1, n do t[#t + 1] = { bag = bag, slot = slot } end
+    end
+    return t
+end
+
+local function itemAt(bag, slot)
+    local link = GetContainerItemLink(bag, slot)
+    if not link then return nil end
+    local _, count, locked, quality = GetContainerItemInfo(bag, slot)
+    local id = tonumber(link:match("item:(%d+)"))
+    local _, _, _, _, _, _, _, maxStack = GetItemInfo(link)
+    return { link = link, id = id, count = count or 1, quality = quality or 1,
+             locked = locked, max = maxStack or 1, name = (link:match("%[(.-)%]") or "") }
+end
+
+-- merge one partial stack onto an earlier partial of the same item; true = did work
+local function stackStep(order)
+    local firstPartial = {}
+    for _, p in ipairs(order) do
+        local it = itemAt(p.bag, p.slot)
+        if it and it.id and it.max > 1 and it.count < it.max and not it.locked then
+            local prev = firstPartial[it.id]
+            if prev then
+                ClearCursor()
+                PickupContainerItem(p.bag, p.slot)
+                PickupContainerItem(prev.bag, prev.slot)   -- fills prev toward max, remainder back on cursor
+                ClearCursor()                              -- returns any remainder to its source
+                return true
+            end
+            firstPartial[it.id] = p
+        end
+    end
+    return false
+end
+
+-- selection-sort by swaps: put the correct item into the first wrong slot; true = did work / waiting
+local function sortStep(order)
+    local items = {}
+    for _, p in ipairs(order) do
+        local it = itemAt(p.bag, p.slot)
+        if it then it.bag, it.slot = p.bag, p.slot; items[#items + 1] = it end
+    end
+    table.sort(items, function(a, b)
+        if a.quality ~= b.quality then return a.quality > b.quality end
+        if a.name ~= b.name then return a.name < b.name end
+        return a.count > b.count
+    end)
+    for i, p in ipairs(order) do
+        local want = items[i]
+        if not want then return false end       -- rest are empty slots; done
+        local cur = itemAt(p.bag, p.slot)
+        if not (cur and cur.link == want.link and cur.count == want.count) then
+            for j = i, #order do
+                local q = order[j]
+                local it = itemAt(q.bag, q.slot)
+                if it and it.link == want.link and it.count == want.count then
+                    if q.bag == p.bag and q.slot == p.slot then break end
+                    if it.locked or (cur and cur.locked) then return true end   -- wait a frame
+                    ClearCursor()
+                    PickupContainerItem(q.bag, q.slot)
+                    PickupContainerItem(p.bag, p.slot)
+                    if GetCursorInfo() then PickupContainerItem(q.bag, q.slot) end
+                    ClearCursor()
+                    return true
+                end
+            end
+        end
+    end
+    return false
+end
+
+local cleanDriver = CreateFrame("Frame"); cleanDriver:Hide()
+local cleanPhase
+cleanDriver:SetScript("OnUpdate", function(self)
+    if InCombatLockdown() then self:Hide(); cleanPhase = nil; return end
+    local order = orderSlots()
+    if cleanPhase == "stack" then
+        if not stackStep(order) then cleanPhase = "sort" end
+        return
+    end
+    if not sortStep(order) then
+        self:Hide(); cleanPhase = nil; RefreshList()
+    end
 end)
+
+local function DoClean()
+    if InCombatLockdown() then
+        DEFAULT_CHAT_FRAME:AddMessage("Deepward Bags: kan ikke rydde i kamp.")
+        return
+    end
+    cleanPhase = "stack"; cleanDriver:Show()
+end
+
+cleanBtn:SetScript("OnClick", DoClean)
 
 local ev = CreateFrame("Frame")
 ev:RegisterEvent("BAG_UPDATE")
