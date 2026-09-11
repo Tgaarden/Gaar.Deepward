@@ -42,7 +42,11 @@ dragBar:SetScript("OnDragStop", function() f:StopMovingOrSizing() end)
 local sortBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
 sortBtn:SetSize(90, 20); sortBtn:SetPoint("TOPRIGHT", -30, -10)
 
-local footer = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+local cleanBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+cleanBtn:SetSize(60, 20); cleanBtn:SetPoint("RIGHT", sortBtn, "LEFT", -4, 0)
+
+local footer = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+footer:SetFont(STANDARD_TEXT_FONT, 16, "OUTLINE")   -- bigger; coin icons scale with the font height
 footer:SetPoint("BOTTOMLEFT", 14, 12)
 
 -- per-bag parent frames carry the bag id so the secure item template resolves bag+slot on click
@@ -95,6 +99,13 @@ local function Layout()
             return a.name < b.name
         end)
     end
+    -- Clean/compact: push all occupied slots to the top-left (keeping their sorted order), empties after.
+    if DB().compact then
+        local occ, emp = {}, {}
+        for _, s in ipairs(slots) do if s.tex then occ[#occ + 1] = s else emp[#emp + 1] = s end end
+        for _, e in ipairs(emp) do occ[#occ + 1] = e end
+        slots = occ
+    end
     -- columns derived from the current window width (so resizing reflows the grid)
     COLS = math.max(6, math.floor((f:GetWidth() - 28) / SIZE))
     -- place
@@ -110,6 +121,7 @@ local function Layout()
     local rows = math.max(1, math.ceil(#slots / COLS))
     f:SetHeight(40 + rows * SIZE + 30)   -- width is user-controlled (resize); only height auto-fits
     sortBtn:SetText("Sort: " .. mode)
+    cleanBtn:SetText(DB().compact and "Clean: on" or "Clean")
 end
 
 -- fill one button's icon/count/quality/lock/cooldown (mirrors ContainerFrame_Update for a single slot)
@@ -119,15 +131,19 @@ local function UpdateButton(bag, slot)
     SetItemButtonTexture(b, tex or "")
     SetItemButtonCount(b, count or 0)
     SetItemButtonDesaturated(b, locked)
-    -- rarity border: recolour the slot's normal texture (3.3.5 has no SetItemButtonQuality/IconBorder)
-    local nt = b:GetNormalTexture()
-    if nt then
-        if quality and quality >= 2 then
-            local r, g, bl = GetItemQualityColor(quality)
-            nt:SetVertexColor(r, g, bl); nt:SetAlpha(1)
-        else
-            nt:SetVertexColor(1, 1, 1); nt:SetAlpha(tex and 0.5 or 1)
-        end
+    -- rarity border: a solid coloured edge frame (3.3.5 has no SetItemButtonQuality / IconBorder)
+    if not b._qf then
+        local qf = CreateFrame("Frame", nil, b)
+        qf:SetFrameLevel(b:GetFrameLevel() + 1)
+        qf:SetPoint("TOPLEFT", -1, 1); qf:SetPoint("BOTTOMRIGHT", 1, -1)
+        qf:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 2 })
+        b._qf = qf
+    end
+    if tex and quality and quality >= 2 then
+        local r, g, bl = GetItemQualityColor(quality)
+        b._qf:SetBackdropBorderColor(r, g, bl, 1); b._qf:Show()
+    else
+        b._qf:Hide()
     end
     local start, dur, en = GetContainerItemCooldown(bag, slot)
     local cd = _G[b:GetName() .. "Cooldown"]
@@ -144,14 +160,18 @@ RefreshList = function()
     -- footer: money with real g/s/c coin icons + token item icons
     local coins = GetCoinTextureString(GetMoney())
     local dtIcon = GetItemIcon(DT_ITEM); local vtIcon = GetItemIcon(VT_ITEM)
-    local dt = dtIcon and ("|T" .. dtIcon .. ":14:14|t ") or "DT "
-    local vt = vtIcon and ("|T" .. vtIcon .. ":14:14|t ") or "VT "
+    local dt = dtIcon and ("|T" .. dtIcon .. ":20:20|t ") or "DT "
+    local vt = vtIcon and ("|T" .. vtIcon .. ":20:20|t ") or "VT "
     footer:SetText(("%s     %s%d    %s%d"):format(coins, dt, GetItemCount(DT_ITEM) or 0, vt, GetItemCount(VT_ITEM) or 0))
 end
 
 sortBtn:SetScript("OnClick", function()
     local m = DB().sort
     DB().sort = (m == "slot") and "quality" or (m == "quality") and "name" or "slot"
+    RefreshList()
+end)
+cleanBtn:SetScript("OnClick", function()
+    DB().compact = not DB().compact
     RefreshList()
 end)
 
@@ -177,7 +197,7 @@ grip:SetScript("OnMouseUp", function() f:StopMovingOrSizing(); RefreshList() end
 f:SetScript("OnSizeChanged", function() RefreshList() end)
 f:EnableMouseWheel(true)
 f:SetScript("OnMouseWheel", function(_, dir)
-    local s = math.max(0.6, math.min(1.6, (DB().scale or 1) + (dir > 0 and 0.05 or -0.05)))
+    local s = math.max(0.6, math.min(2.0, (DB().scale or 1) + (dir > 0 and 0.05 or -0.05)))
     DB().scale = s; f:SetScale(s)
 end)
 
