@@ -250,10 +250,10 @@ local function UpdatePlate(o)
                         and UnitExists("mouseover") and UnitCanAttack("player", "mouseover")
     local unit = isTarget and "target" or (isMouseover and "mouseover") or nil
 
-    -- colour
-    local cr, cg, cb = BarColor(o, isTarget)
-    if cr then o.health:SetStatusBarColor(cr, cg, cb) end
-    if DB().execute and pct * 100 <= DB().executePct then o.health:SetStatusBarColor(0.5, 0, 0) end
+    -- colour — accumulate the intended colour, then desaturate once (Mute) so nothing is a harsh pure red /
+    -- purple; the whole set reads matte.
+    local br, bg, bb = BarColor(o, isTarget)
+    if DB().execute and pct * 100 <= DB().executePct then br, bg, bb = 0.5, 0.22, 0.22 end   -- execute (matte red)
 
     -- threat. PURPLE bar = you hold aggro on this mob; ORANGE = high threat / about to pull.
     -- For the target/mouseover mob we use the exact threat API (and can show your %). For EVERY OTHER plate
@@ -265,21 +265,20 @@ local function UpdatePlate(o)
     if DB().threat then
         if unit then
             local tanking, status, pctThreat = UnitDetailedThreatSituation("player", unit)
-            if tanking then
-                o.health:SetStatusBarColor(0.6, 0.2, 0.9); aggro = true      -- you have aggro (purple)
-            elseif status and status >= 2 then
-                o.health:SetStatusBarColor(1.0, 0.6, 0.0)                    -- high threat, about to pull
-            end
+            if tanking then br, bg, bb = 0.55, 0.38, 0.68; aggro = true      -- you have aggro (matte purple)
+            elseif status and status >= 2 then br, bg, bb = 0.8, 0.6, 0.35 end   -- high threat (matte amber)
             if DB().threatText and pctThreat then o.ttext:SetText(("%d%%"):format(pctThreat + 0.5)) end
         elseif o.r.glow and o.r.glow:IsShown() then
             local gr, gg = o.r.glow:GetVertexColor()
-            if gr and gr > 0.8 and gg < 0.4 then
-                o.health:SetStatusBarColor(0.6, 0.2, 0.9); aggro = true      -- native red glow = you have aggro
-            elseif gr and gr > 0.6 and gg > 0.5 then
-                o.health:SetStatusBarColor(1.0, 0.6, 0.0)                    -- native yellow glow = high threat
-            end
+            if gr and gr > 0.8 and gg < 0.4 then br, bg, bb = 0.55, 0.38, 0.68; aggro = true   -- native red glow = aggro
+            elseif gr and gr > 0.6 and gg > 0.5 then br, bg, bb = 0.8, 0.6, 0.35 end            -- native yellow = high
         end
     end
+
+    -- desaturate the chosen colour toward its own luminance so it reads matte, then apply once
+    local lum = 0.3 * br + 0.59 * bg + 0.11 * bb
+    local m = 0.28   -- how far toward grey (0 = full colour, 1 = grey)
+    o.health:SetStatusBarColor(br + (lum - br) * m, bg + (lum - bg) * m, bb + (lum - bb) * m)
 
     -- name + level
     o.name:SetText(nameText)
@@ -317,9 +316,9 @@ local function UpdatePlate(o)
         o.cast:Hide()
     end
 
-    -- highlight + scale (purple border when you hold aggro, white on your target otherwise)
-    if aggro then o.hi:SetBackdropBorderColor(0.6, 0.2, 0.9, 1); o.hi:Show()
-    elseif DB().targetHi and isTarget then o.hi:SetBackdropBorderColor(1, 1, 1, 1); o.hi:Show()
+    -- highlight + scale (matte purple border when you hold aggro, soft white on your target otherwise)
+    if aggro then o.hi:SetBackdropBorderColor(0.55, 0.38, 0.68, 1); o.hi:Show()
+    elseif DB().targetHi and isTarget then o.hi:SetBackdropBorderColor(0.9, 0.9, 0.9, 1); o.hi:Show()
     else o.hi:Hide() end
     o.frame:SetScale((DB().targetHi and isTarget) and DB().targetScale or 1)
 
