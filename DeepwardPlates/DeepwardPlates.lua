@@ -255,19 +255,30 @@ local function UpdatePlate(o)
     if cr then o.health:SetStatusBarColor(cr, cg, cb) end
     if DB().execute and pct * 100 <= DB().executePct then o.health:SetStatusBarColor(0.5, 0, 0) end
 
-    -- threat (target only) + differential text.
-    -- When YOU hold aggro (you are the mob's primary target) the bar goes PURPLE — a deliberately non-native
-    -- colour that reads at a glance. Rising-but-not-yet-aggro shows an orange warning.
+    -- threat. PURPLE bar = you hold aggro on this mob; ORANGE = high threat / about to pull.
+    -- For the target/mouseover mob we use the exact threat API (and can show your %). For EVERY OTHER plate
+    -- we read Blizzard's native nameplate threat GLOW colour — the client computes it per plate from combat
+    -- data with no unit token, so a tank can see aggro on all mobs at once. (Needs the client's nameplate
+    -- aggro feature active, i.e. you're in combat with threat on them.)
     local aggro
     o.ttext:SetText("")
-    if DB().threat and unit then
-        local tanking, status, pctThreat = UnitDetailedThreatSituation("player", unit)
-        if tanking then
-            o.health:SetStatusBarColor(0.6, 0.2, 0.9); aggro = true      -- you have aggro (purple)
-        elseif status and status >= 2 then
-            o.health:SetStatusBarColor(1.0, 0.6, 0.0)                    -- high threat, about to pull
+    if DB().threat then
+        if unit then
+            local tanking, status, pctThreat = UnitDetailedThreatSituation("player", unit)
+            if tanking then
+                o.health:SetStatusBarColor(0.6, 0.2, 0.9); aggro = true      -- you have aggro (purple)
+            elseif status and status >= 2 then
+                o.health:SetStatusBarColor(1.0, 0.6, 0.0)                    -- high threat, about to pull
+            end
+            if DB().threatText and pctThreat then o.ttext:SetText(("%d%%"):format(pctThreat + 0.5)) end
+        elseif o.r.glow and o.r.glow:IsShown() then
+            local gr, gg = o.r.glow:GetVertexColor()
+            if gr and gr > 0.8 and gg < 0.4 then
+                o.health:SetStatusBarColor(0.6, 0.2, 0.9); aggro = true      -- native red glow = you have aggro
+            elseif gr and gr > 0.6 and gg > 0.5 then
+                o.health:SetStatusBarColor(1.0, 0.6, 0.0)                    -- native yellow glow = high threat
+            end
         end
-        if DB().threatText and pctThreat then o.ttext:SetText(("%d%%"):format(pctThreat + 0.5)) end
     end
 
     -- name + level
