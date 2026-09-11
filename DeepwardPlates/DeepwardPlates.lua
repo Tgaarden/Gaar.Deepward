@@ -104,19 +104,28 @@ local function BuildOverlay(plate)
 
     local o = { plate = plate, hb = hb, cb = cb, r = r }
 
-    -- collect EVERY default texture to hide (region-name guessing is fragile, so gather generically):
-    -- all texture regions on the plate, plus the health/cast bars' own fill textures. Keep the raid-target
-    -- marker (r.raid) visible. Font strings are left alone (we still read their text) but faded separately.
-    o.hideTex = {}
-    local function collect(frame)
+    -- Collect the default textures generically (region-name guessing is fragile). Two groups:
+    --   hideTex = the plate's own regions (glow, borders, highlight, elite/boss art) — these are CLEARED with
+    --             SetTexture(nil) because Blizzard re-shows them every frame; nil'ing makes them render
+    --             nothing regardless. The spell icon is a plate region too but kept (read for our cast bar).
+    --   fadeTex = the health/cast bars' fill textures — only faded to alpha 0 (never nil'd, so the default
+    --             bar's stored StatusBarColor stays readable for reaction colouring). Our bars sit on top.
+    -- The raid-target marker (r.raid) is left fully visible.
+    o.hideTex, o.fadeTex = {}, {}
+    for _, reg in ipairs({ plate:GetRegions() }) do
+        if reg and reg.GetObjectType and reg:GetObjectType() == "Texture" and reg ~= r.raid then
+            o.hideTex[#o.hideTex + 1] = reg
+        end
+    end
+    local function fade(frame)
         if not frame then return end
         for _, reg in ipairs({ frame:GetRegions() }) do
-            if reg and reg.GetObjectType and reg:GetObjectType() == "Texture" and reg ~= r.raid then
-                o.hideTex[#o.hideTex + 1] = reg
+            if reg and reg.GetObjectType and reg:GetObjectType() == "Texture" then
+                o.fadeTex[#o.fadeTex + 1] = reg
             end
         end
     end
-    collect(plate); collect(hb); collect(cb)
+    fade(hb); fade(cb)
 
     local f = CreateFrame("Frame", nil, plate)
     f:SetFrameLevel((plate:GetFrameLevel() or 0) + 2)
@@ -166,7 +175,13 @@ end
 -- native red bar coming back.
 -- (HideDefault is forward-declared above so BuildOverlay's OnShow hook can call it)
 HideDefault = function(o)
-    for _, tex in ipairs(o.hideTex) do tex:SetAlpha(0) end
+    -- Blizzard re-shows the target's glow/border every frame by resetting its vertex colour + alpha, so
+    -- alpha 0 alone flickers back. Clearing the TEXTURE makes it render nothing regardless of those resets.
+    -- The spell icon is kept (we read its texture for our own cast bar) and only faded.
+    for _, tex in ipairs(o.hideTex) do
+        if tex == o.r.spellIcon then tex:SetAlpha(0) else tex:SetTexture(nil) end
+    end
+    for _, tex in ipairs(o.fadeTex) do tex:SetAlpha(0) end   -- bar fills: fade only, keep colour readable
     if o.r.name then o.r.name:SetAlpha(0) end
     if o.r.level then o.r.level:SetAlpha(0) end
 end
