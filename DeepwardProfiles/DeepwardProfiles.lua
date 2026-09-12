@@ -259,6 +259,7 @@ local function BuildUI()
     help:SetText("Profiles are shared across all your characters on this account. Use Export/Import to move a setup to another account.")
 
     UI = f
+    f:Hide()   -- frames are shown on creation; start hidden so the FIRST Toggle opens it (no double-click)
     return f
 end
 
