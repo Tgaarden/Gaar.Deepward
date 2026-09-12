@@ -348,6 +348,18 @@ SlashCmdList["DEEPWARDPROFILE"] = function(msg)
         say("Meter: " .. P(DeepwardMeterDB) .. " | Threat: " .. P(DeepwardThreatDB))
         local nf = 0; if DeepwardUIDB and DeepwardUIDB.frames then for _ in pairs(DeepwardUIDB.frames) do nf = nf + 1 end end
         say("UI moved frames: " .. nf .. " | UI scale=" .. tostring(DeepwardUIDB and DeepwardUIDB.frameScale or 1))
+        -- STORED (DB) vs ACTUAL (live frame) — if these differ, the addon isn't applying the saved value
+        local function liveVs(fname)
+            local pf = _G[fname]
+            local stored = DeepwardUIDB and DeepwardUIDB.frames and DeepwardUIDB.frames[fname]
+            local sp = stored and (stored.point .. " " .. math.floor(stored.x or 0) .. "," .. math.floor(stored.y or 0)) or "none"
+            local ap = "?"
+            if pf and pf.GetPoint then local p, _, _, x, y = pf:GetPoint(); if p then ap = p .. " " .. math.floor(x or 0) .. "," .. math.floor(y or 0) end end
+            say(fname .. ": stored=" .. sp .. " | actual=" .. ap)
+        end
+        liveVs("PlayerFrame"); liveVs("TargetFrame")
+        local cpb = _G["DeepwardCast_player"]
+        if cpb and cpb.GetPoint then local p, _, _, x, y = cpb:GetPoint(); if p then say("Cast player frame actual=" .. p .. " " .. math.floor(x or 0) .. "," .. math.floor(y or 0)) end end
     else
         Toggle()
     end
