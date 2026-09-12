@@ -219,32 +219,44 @@ local function BuildUI()
         b:SetSize(200, 24); b:SetPoint("TOPLEFT", 232, y); b:SetText(txt); b:SetScript("OnClick", fn)
         return b
     end
-    actBtn("Load selected (reloads UI)", -74, function()
+    actBtn("Load selected (reloads UI)", -72, function()
         if selected and LoadProfile(selected) then say("loading '" .. selected .. "' …"); ReloadUI() else say("select a profile first.") end
     end)
-    actBtn("Delete selected", -104, function()
+    actBtn("Delete selected", -100, function()
         if selected then DeleteProfile(selected); say("deleted '" .. selected .. "'."); selected = nil; RefreshList() else say("select a profile first.") end
     end)
-    actBtn("Export selected -> box", -134, function()
+    actBtn("Export selected -> box", -128, function()
         if selected and PDB().profiles[selected] then
             f.textBox:SetText(Serialize(PDB().profiles[selected]))
             f.textBox:HighlightText(); f.textBox:SetFocus()
             say("exported '" .. selected .. "' — copy the text (Ctrl+C).")
         else say("select a profile first.") end
     end)
-    actBtn("Import from box -> name", -164, function()
+    actBtn("Import from box -> name", -156, function()
         local data = Deserialize(f.textBox:GetText())
         local n = nameBox:GetText()
         if not data then say("box does not contain a valid profile string.")
         elseif not n or n == "" then say("type a name to import into.")
-        else PDB().profiles[n] = data; say("imported into '" .. n .. "'."); RefreshList() end
+        else PDB().profiles[n] = data; selected = n; say("imported into '" .. n .. "' (selected)."); RefreshList() end
     end)
+    -- one-click reliable transfer: paste a string, name it, then this imports + loads + reloads
+    local ilBtn = actBtn("Import & Load (paste first)", -184, function()
+        local data = Deserialize(f.textBox:GetText())
+        local n = nameBox:GetText()
+        if not data then say("paste a valid profile string in the box first.")
+        elseif not n or n == "" then say("type a name for the imported profile.")
+        else
+            PDB().profiles[n] = data
+            if LoadProfile(n) then say("imported + loading '" .. n .. "' …"); ReloadUI() end
+        end
+    end)
+    ilBtn:GetFontString():SetTextColor(0.4, 1, 0.4)   -- highlight the recommended one-click path
 
     -- export/import text box (multiline, scrollable)
     local boxLabel = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    boxLabel:SetPoint("TOPLEFT", 232, -196); boxLabel:SetText("Export/Import string:")
+    boxLabel:SetPoint("TOPLEFT", 232, -212); boxLabel:SetText("Export/Import string:")
     local scroll = CreateFrame("ScrollFrame", "DeepwardProfilesScroll", f, "UIPanelScrollFrameTemplate")
-    scroll:SetPoint("TOPLEFT", 232, -212); scroll:SetSize(190, 100)
+    scroll:SetPoint("TOPLEFT", 232, -228); scroll:SetSize(190, 92)
     scroll:SetBackdrop({ bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
         edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 12, insets = { left = 3, right = 3, top = 3, bottom = 3 } })
     scroll:SetBackdropColor(0, 0, 0, 0.6)
