@@ -249,8 +249,12 @@ local function BuildUI()
     scroll:SetBackdropColor(0, 0, 0, 0.6)
     local box = CreateFrame("EditBox", nil, scroll)
     box:SetMultiLine(true); box:SetAutoFocus(false); box:SetFontObject(ChatFontNormal)
-    box:SetWidth(180); box:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    box:EnableMouse(true); box:SetMaxLetters(0)
+    box:SetWidth(172); box:SetHeight(400)   -- needs a real height, else the click/focus area is zero
+    box:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
     scroll:SetScrollChild(box)
+    scroll:EnableMouse(true)
+    scroll:SetScript("OnMouseDown", function() box:SetFocus() end)   -- click anywhere in the box to type/paste
     f.textBox = box
 
     local help = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
