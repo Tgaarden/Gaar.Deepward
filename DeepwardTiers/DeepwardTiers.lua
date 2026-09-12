@@ -381,7 +381,7 @@ end
 -- Tiers temporarily closed to entry (addon-side gate; toggle here). Tier 9 raids are locked while changes
 -- are made. Only a char whose current tier is locked can reach that tier via .enter, so gating on the live
 -- current tier is enough.
-local DW_LOCKED_TIERS = { [9] = true }
+local DW_LOCKED_TIERS = {}   -- raids OPEN again (was {[9]=true}); re-add [9]=true to close while reworking progression
 local function TierLocked()
     return DeepwardLive and DeepwardLive.tier and DW_LOCKED_TIERS[DeepwardLive.tier]
 end
