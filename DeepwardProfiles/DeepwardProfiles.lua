@@ -100,6 +100,7 @@ local function LoadProfile(name)
     ApplySnapshot(p)
     -- stash a report to print AFTER the reload (the reload clears the chat), so you can confirm what landed
     PDB()._pending = "loaded '" .. name .. "' -> " .. report(p)
+    PDB()._verify = name   -- after the reload, deep-compare live DBs vs this profile to prove it persisted
     return true
 end
 
@@ -291,12 +292,38 @@ _G.DeepwardProfiles_Toggle = Toggle
 -- ---------------------------------------------------------------------------
 -- Slash
 -- ---------------------------------------------------------------------------
--- after a profile Load reloads the UI, print what actually landed (survives the reload via _pending)
+-- order-independent deep compare (pairs() order can differ between two equal tables)
+local function deepEqual(a, b)
+    if type(a) ~= type(b) then return false end
+    if type(a) ~= "table" then return a == b end
+    for k, v in pairs(a) do if not deepEqual(v, b[k]) then return false end end
+    for k in pairs(b) do if a[k] == nil then return false end end
+    return true
+end
+
+-- after a profile Load reloads the UI, print what landed (survives the reload via _pending) and — if a
+-- verify was requested — deep-compare each LIVE DB against the profile to PROVE the load persisted.
 local flush = CreateFrame("Frame")
 flush:RegisterEvent("PLAYER_LOGIN")
 flush:SetScript("OnEvent", function()
     local p = PDB()
     if p._pending then say(p._pending); p._pending = nil end
+    if p._verify then
+        local prof = p.profiles[p._verify]
+        p._verify = nil
+        if prof then
+            local ok, bad = {}, {}
+            for _, n in ipairs(DB_NAMES) do
+                if prof[n] ~= nil then
+                    local short = (n:gsub("^Deepward", ""):gsub("DB$", ""))
+                    if deepEqual(_G[n], prof[n]) then ok[#ok + 1] = short else bad[#bad + 1] = short end
+                end
+            end
+            if #bad == 0 then say("VERIFY: all DBs match the profile (persisted OK): " .. table.concat(ok, ", "))
+            else say("|cffff5555VERIFY MISMATCH|r (did NOT persist): " .. table.concat(bad, ", ")
+                     .. "  |  matched: " .. table.concat(ok, ", ")) end
+        end
+    end
 end)
 
 SLASH_DEEPWARDPROFILE1 = "/dwprofile"
