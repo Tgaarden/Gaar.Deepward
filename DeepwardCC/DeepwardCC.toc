@@ -3,5 +3,5 @@
 ## Notes: Cooldown count text on action buttons, items and any cooldown swipe. /dwcc for options.
 ## Author: Deepward
 ## Version: 1.0
-## SavedVariables: DeepwardCCDB
+## SavedVariablesPerCharacter: DeepwardCCDB
 DeepwardCC.lua

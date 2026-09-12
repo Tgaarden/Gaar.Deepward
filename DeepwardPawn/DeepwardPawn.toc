@@ -3,5 +3,5 @@
 ## Notes: Item score from stat weights on tooltips + upgrade check vs your equipped gear. /dwpawn.
 ## Author: Deepward
 ## Version: 1.0
-## SavedVariables: DeepwardPawnDB
+## SavedVariablesPerCharacter: DeepwardPawnDB
 DeepwardPawn.lua

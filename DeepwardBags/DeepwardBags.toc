@@ -3,5 +3,5 @@
 ## Notes: Lightweight one-bag: all bags in one window, sorting, gold + Deepward token counts. /dwbags.
 ## Author: Deepward
 ## Version: 1.0
-## SavedVariables: DeepwardBagsDB
+## SavedVariablesPerCharacter: DeepwardBagsDB
 DeepwardBags.lua

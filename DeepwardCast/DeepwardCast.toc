@@ -3,5 +3,5 @@
 ## Notes: Movable cast bars (player/target/focus/pet) with spell icon, timer and a latency safe-zone. /dwcast.
 ## Author: Deepward
 ## Version: 1.0
-## SavedVariables: DeepwardCastDB
+## SavedVariablesPerCharacter: DeepwardCastDB
 DeepwardCast.lua

@@ -3,5 +3,5 @@
 ## Notes: Cleaner nameplates — flat health bars, big names, health percent, styled cast bar. /dwplates.
 ## Author: Deepward
 ## Version: 1.0
-## SavedVariables: DeepwardPlatesDB
+## SavedVariablesPerCharacter: DeepwardPlatesDB
 DeepwardPlates.lua
